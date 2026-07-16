@@ -3,65 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Perangkat Guru - Login Resmi</title>
-    <!-- Tailwind CSS untuk Styling -->
+    <title>Dashboard - Perangkat Guru</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
-<body class="bg-gray-100 h-screen flex items-center justify-center font-sans">
+<body class="bg-gray-50 h-screen hidden" id="main-content"> <!-- Disembunyikan dulu sampai terverifikasi login -->
 
-    <div class="bg-white p-8 rounded-xl shadow-md w-full max-w-md">
-        <!-- Status Loading Awal -->
-        <div id="loading-state" class="text-center py-4">
-            <p class="text-gray-600 animate-pulse">Menghubungkan ke server aman...</p>
+    <!-- Navbar -->
+    <nav class="bg-indigo-600 text-white p-4 flex justify-between items-center shadow-md">
+        <h1 class="text-xl font-bold">Aplikasi Perangkat Guru</h1>
+        <div class="flex items-center gap-4">
+            <span id="user-display" class="bg-indigo-700 px-3 py-1 rounded text-sm font-medium">Memuat profil...</span>
+            <button id="btn-logout" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm transition">
+                Keluar
+            </button>
         </div>
+    </nav>
 
-        <!-- Form Login -->
-        <div id="login-form-container" class="hidden">
-            <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Masuk ke Sistem</h2>
-            <form id="login-form" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Username</label>
-                    <input type="text" id="login-username" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Password</label>
-                    <input type="password" id="login-password" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                </div>
-                <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition">Masuk</button>
-            </form>
+    <!-- Isi Konten Utama Aplikasi Anda -->
+    <main class="p-8 max-w-4xl mx-auto">
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">Selamat Datang di Halaman Utama</h2>
+            <p class="text-gray-600">Proses autentikasi berhasil. Di file inilah Anda bisa mulai membangun fitur-fitur administrasi guru secara bertahap.</p>
         </div>
+    </main>
 
-        <!-- Form Register (Muncul jika database kosong) -->
-        <div id="register-form-container" class="hidden">
-            <div class="bg-blue-50 border-l-4 border-blue-500 p-3 mb-4 rounded">
-                <p class="text-sm text-blue-700 font-medium">Sistem Baru: Silakan buat akun utama (Admin) untuk mengamankan database.</p>
-            </div>
-            <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Pendaftaran Akun Baru</h2>
-            <form id="register-form" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Nama Lengkap</label>
-                    <input type="text" id="reg-name" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Username</label>
-                    <input type="text" id="reg-username" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Password (Minimal 6 Karakter)</label>
-                    <input type="password" id="reg-password" minlength="6" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                </div>
-                <button type="submit" class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition">Daftar & Amankan Sistem</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Firebase SDK Modular -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, getDocs, doc, setDoc, query, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Konfigurasi Firebase Anda
         const firebaseConfig = {
             apiKey: "AIzaSyBrvRy59biZZilEgp8HIpHIUA16PcaflJU",
             authDomain: "perangkat-guru-85e8f.firebaseapp.com",
@@ -72,92 +42,44 @@
             measurementId: "G-6K1DGGKEES"
         };
 
-        // Inisialisasi
         const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
         const auth = getAuth(app);
+        const db = getFirestore(app);
 
-        const loadingState = document.getElementById('loading-state');
-        const loginContainer = document.getElementById('login-form-container');
-        const registerContainer = document.getElementById('register-form-container');
+        const mainContent = document.getElementById('main-content');
+        const userDisplay = document.getElementById('user-display');
 
-        // Helper untuk mengubah username menjadi format email internal Firebase
-        const convertToEmail = (username) => `${username.trim().toLowerCase()}@perangkatguru.local`;
-
-        // Pengecekan awal apakah database kosong
-        async function checkUsersExist() {
-            try {
-                const usersRef = collection(db, "users");
-                const q = query(usersRef, limit(1));
-                const querySnapshot = await getDocs(q);
-                
-                loadingState.classList.add('hidden');
-                
-                if (querySnapshot.empty) {
-                    registerContainer.classList.remove('hidden');
-                } else {
-                    loginContainer.classList.remove('hidden');
+        // Fungsi Proteksi Halaman: Cek apakah user sudah login
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                try {
+                    // Ambil detail nama & role dari Firestore berdasarkan UID Auth
+                    const userDoc = await getDoc(doc(db, "users", user.uid));
+                    if (userDoc.exists()) {
+                        const data = userDoc.data();
+                        userDisplay.textContent = `${data.name} (${data.role})`;
+                    } else {
+                        userDisplay.textContent = user.email;
+                    }
+                } catch (err) {
+                    userDisplay.textContent = "Terautentikasi";
                 }
-            } catch (error) {
-                console.error(error);
-                alert("Gagal terhubung ke database. Pastikan Rules Firestore Anda sudah benar.");
-            }
-        }
-
-        checkUsersExist();
-
-        // PROSEDUR REGISTRASI AMAN (Akun Pertama)
-        document.getElementById('register-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const name = document.getElementById('reg-name').value.trim();
-            const username = document.getElementById('reg-username').value.trim().toLowerCase();
-            const password = document.getElementById('reg-password').value;
-            const fakeEmail = convertToEmail(username);
-
-            try {
-                // 1. Daftarkan kredensial secara aman ke Firebase Authentication
-                const userCredential = await createUserWithEmailAndPassword(auth, fakeEmail, password);
-                const uid = userCredential.user.uid;
-
-                // 2. Simpan profil tambahan ke Firestore (Tanpa Password Teks Polos!)
-                await setDoc(doc(db, "users", uid), {
-                    accountId: uid,
-                    name: name,
-                    username: username,
-                    role: "admin", // Akun pertama otomatis menjadi Admin Utama
-                    createdAt: new Date().toISOString()
-                });
-
-                alert("Akun Admin berhasil dibuat dengan sistem autentikasi aman!");
-                window.location.reload();
-            } catch (error) {
-                console.error(error);
-                alert("Pendaftaran gagal: " + error.message);
+                
+                // Tampilkan halaman jika terbukti sudah login
+                mainContent.classList.remove('hidden');
+            } else {
+                // Tendang ke halaman login jika belum login
+                window.location.href = "login.html";
             }
         });
 
-        // PROSEDUR LOGIN AMAN
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const username = document.getElementById('login-username').value;
-            const password = document.getElementById('login-password').value;
-            const fakeEmail = convertToEmail(username);
-
-            try {
-                // Proses verifikasi langsung ditangani oleh Firebase Auth secara terenkripsi
-                const userCredential = await signInWithEmailAndPassword(auth, fakeEmail, password);
-                const uid = userCredential.user.uid;
-
-                alert("Login berhasil menggunakan Firebase Auth!");
-                
-                // Di sini Anda bisa mengarahkan ke halaman utama
-                // window.location.href = "dashboard.html";
-            } catch (error) {
-                console.error(error);
-                alert("Login gagal: Username atau password salah.");
-            }
+        // Prosedur Logout
+        document.getElementById('btn-logout').addEventListener('click', () => {
+            signOut(auth).then(() => {
+                window.location.href = "login.html";
+            }).catch((error) => {
+                alert("Gagal logout: " + error.message);
+            });
         });
     </script>
 </body>

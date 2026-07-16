@@ -1,0 +1,18 @@
+// PROSEDUR LOGIN AMAN
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const username = document.getElementById('login-username').value;
+    const password = document.getElementById('login-password').value;
+    const fakeEmail = convertToEmail(username);
+
+    try {
+        const userCredential = await signInWithEmailAndPassword(auth, fakeEmail, password);
+        
+        // Pindahkan user ke halaman utama setelah sukses login
+        window.location.href = "index.html"; 
+    } catch (error) {
+        console.error(error);
+        alert("Login gagal: Username atau password salah.");
+    }
+});
