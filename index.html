@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Perangkat Guru - Login</title>
+    <!-- Tailwind CSS untuk Styling Cepat -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- CryptoJS untuk Hashing Password (Keamanan Dasar) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+</head>
+<body class="bg-gray-100 h-screen flex items-center justify-center font-sans">
+
+    <div class="bg-white p-8 rounded-xl shadow-md w-full max-w-md">
+        <!-- Status Loading Awal -->
+        <div id="loading-state" class="text-center py-4">
+            <p class="text-gray-600 animate-pulse">Memeriksa konfigurasi sistem...</p>
+        </div>
+
+        <!-- Form Login -->
+        <div id="login-form-container" class="hidden">
+            <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Masuk ke Sistem</h2>
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Username</label>
+                    <input type="text" id="login-username" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="login-password" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition">Masuk</button>
+            </form>
+        </div>
+
+        <!-- Form Register (Muncul jika database kosong) -->
+        <div id="register-form-container" class="hidden">
+            <div class="bg-amber-50 border-l-4 border-amber-500 p-3 mb-4 rounded">
+                <p class="text-sm text-amber-700 font-medium">Belum ada akun terdaftar. Silakan buat akun utama (Admin) terlebih dahulu.</p>
+            </div>
+            <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Pendaftaran Akun Baru</h2>
+            <form id="register-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Nama Lengkap</label>
+                    <input type="text" id="reg-name" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Username</label>
+                    <input type="text" id="reg-username" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="reg-password" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <button type="submit" class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition">Daftar & Masuk</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Firebase SDK (Modular v10+) menggunakan Type Module -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
+        import { getFirestore, collection, getDocs, addDoc, query, where, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // Konfigurasi Firebase Anda
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrvRy59biZZilEgp8HIpHIUA16PcaflJU",
+            authDomain: "perangkat-guru-85e8f.firebaseapp.com",
+            projectId: "perangkat-guru-85e8f",
+            storageBucket: "perangkat-guru-85e8f.firebasestorage.app",
+            messagingSenderId: "489186826165",
+            appId: "1:489186826165:web:c7b6d6a91ec70d12f06bfc",
+            measurementId: "G-6K1DGGKEES"
+        };
+
+        // Inisialisasi Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const db = getFirestore(app);
+
+        // Elemen DOM
+        const loadingState = document.getElementById('loading-state');
+        const loginContainer = document.getElementById('login-form-container');
+        const registerContainer = document.getElementById('register-form-container');
+
+        // Fungsi mengecek apakah database kosong
+        async function checkUsersExist() {
+            try {
+                const usersRef = collection(db, "users");
+                const q = query(usersRef, limit(1));
+                const querySnapshot = await getDocs(q);
+                
+                loadingState.classList.add('hidden');
+                
+                if (querySnapshot.empty) {
+                    // Jika kosong, tampilkan form register
+                    registerContainer.classList.remove('hidden');
+                } else {
+                    // Jika ada data, tampilkan form login
+                    loginContainer.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error("Gagal memeriksa database: ", error);
+                alert("Terjadi kesalahan koneksi ke Firebase. Pastikan aturan Firestore (Security Rules) sudah diatur ke publik atau mode pengujian.");
+            }
+        }
+
+        // Jalankan pengecekan saat halaman dimuat
+        checkUsersExist();
+
+        // Prosedur REGISTRASI (Akun Pertama)
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('reg-name').value.trim();
+            const username = document.getElementById('reg-username').value.trim().toLowerCase();
+            const password = document.getElementById('reg-password').value;
+            
+            // Hashing password dengan SHA-256 agar tidak tersimpan sebagai teks polos
+            const hashedPassword = CryptoJS.SHA256(password).toString();
+
+            try {
+                const usersRef = collection(db, "users");
+                
+                // Simpan ke Firestore
+                const docRef = await addDoc(usersRef, {
+                    name: name,
+                    username: username,
+                    password: hashedPassword,
+                    role: "admin", // Akun pertama otomatis menjadi admin
+                    createdAt: new Date().toISOString()
+                });
+
+                alert(`Akun berhasil dibuat dengan ID: ${docRef.id}. Silakan muat ulang halaman untuk masuk.`);
+                window.location.reload();
+            } catch (error) {
+                console.error("Gagal mendaftarkan akun: ", error);
+                alert("Gagal mendaftar: " + error.message);
+            }
+        });
+
+        // Prosedur LOGIN
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('login-username').value.trim().toLowerCase();
+            const password = document.getElementById('login-password').value;
+            const hashedPassword = CryptoJS.SHA256(password).toString();
+
+            try {
+                const usersRef = collection(db, "users");
+                // Cari user berdasarkan username dan password yang sudah di-hash
+                const q = query(usersRef, where("username", "==", username), where("password", "==", hashedPassword), limit(1));
+                const querySnapshot = await getDocs(q);
+
+                if (!querySnapshot.empty) {
+                    querySnapshot.forEach((doc) => {
+                        const userData = doc.data();
+                        alert(`Selamat datang kembali, ${userData.name}! Anda masuk sebagai [${userData.role}].`);
+                        // Langkah berikutnya: Arahkan ke dashboard internal Anda di sini
+                        // window.location.href = "dashboard.html";
+                    });
+                } else {
+                    alert("Username atau password salah. Silakan coba lagi.");
+                }
+            } catch (error) {
+                console.error("Gagal login: ", error);
+                alert("Terjadi kesalahan saat proses masuk: " + error.message);
+            }
+        });
+    </script>
+</body>
+</html>
