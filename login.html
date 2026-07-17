@@ -1,18 +1,124 @@
-// PROSEDUR LOGIN AMAN
-document.getElementById('login-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const username = document.getElementById('login-username').value;
-    const password = document.getElementById('login-password').value;
-    const fakeEmail = convertToEmail(username);
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Perangkat Guru</title>
+    <!-- Anda bisa menambahkan link CSS / Bootstrap di sini jika ada -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f9;
+            margin: 0;
+        }
+        .login-container {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
 
-    try {
-        const userCredential = await signInWithEmailAndPassword(auth, fakeEmail, password);
-        
-        // Pindahkan user ke halaman utama setelah sukses login
-        window.location.href = "index.html"; 
-    } catch (error) {
-        console.error(error);
-        alert("Login gagal: Username atau password salah.");
-    }
-});
+    <div class="login-container">
+        <h2>Login Perangkat Guru</h2>
+        <!-- Form dengan ID yang sesuai dengan script -->
+        <form id="login-form">
+            <div class="form-group">
+                <label for="login-username">Username</label>
+                <input type="text" id="login-username" placeholder="Masukkan username" required>
+            </div>
+            <div class="form-group">
+                <label for="login-password">Password</label>
+                <input type="password" id="login-password" placeholder="Masukkan password" required>
+            </div>
+            <button type="submit">Login</button>
+        </form>
+    </div>
+
+    <!-- 1. LOAD FIREBASE SDK (Sesuaikan versi Firebase yang Anda gunakan) -->
+    <!-- Contoh di bawah menggunakan Firebase v9/v10 Firebase Auth via CDN -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        // 2. KONFIGURASI FIREBASE (Masukkan konfigurasi dari Firebase Console Anda)
+        const firebaseConfig = {
+            apiKey: "MASUKKAN_API_KEY_ANDA",
+            authDomain: "MASUKKAN_AUTH_DOMAIN_ANDA",
+            projectId: "MASUKKAN_PROJECT_ID_ANDA",
+            storageBucket: "MASUKKAN_STORAGE_BUCKET_ANDA",
+            messagingSenderId: "MASUKKAN_MESSAGING_SENDER_ID_ANDA",
+            appId: "MASUKKAN_APP_ID_ANDA"
+        };
+
+        // Inisialisasi Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // Fungsi pembantu untuk mengubah username menjadi format email (jika diperlukan)
+        function convertToEmail(username) {
+            // Contoh sederhana: jika user menginput 'admin', diubah menjadi 'admin@domain.com'
+            // Sesuaikan logika ini dengan sistem backend/auth Anda
+            if (!username.includes('@')) {
+                return `${username}@PerangkatGuru.local`; 
+            }
+            return username;
+        }
+
+        // 3. PROSEDUR LOGIN AMAN
+        document.getElementById('login-form').addEventListener('submit', async (e) => { 
+            e.preventDefault(); 
+            
+            const username = document.getElementById('login-username').value; 
+            const password = document.getElementById('login-password').value; 
+            const fakeEmail = convertToEmail(username); 
+            
+            try { 
+                const userCredential = await signInWithEmailAndPassword(auth, fakeEmail, password); 
+                // Pindahkan user ke halaman utama setelah sukses login 
+                window.location.href = "index.html"; 
+            } catch (error) { 
+                console.error(error); 
+                alert("Login gagal: Username atau password salah."); 
+            } 
+        });
+    </script>
+
+</body>
+</html>
