@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrasi Admin - Perangkat Guru</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f9;
+            margin: 0;
+        }
+        .register-container {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        .note {
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="register-container">
+        <h2>Registrasi Akun Admin</h2>
+        <p style="font-size: 14px; color: #d9534f;">Sistem mendeteksi belum ada Admin utama. Silakan buat akun Admin terlebih dahulu.</p>
+        
+        <form id="register-form">
+            <div class="form-group">
+                <label for="reg-username">Username Admin</label>
+                <input type="text" id="reg-username" placeholder="Contoh: admin" required>
+            </div>
+            <div class="form-group">
+                <label for="reg-password">Password</label>
+                <input type="password" id="reg-password" placeholder="Minimal 6 karakter" required>
+            </div>
+            <button type="submit">Daftarkan Admin</button>
+        </form>
+        <div class="note">Setelah mendaftar, Anda akan dialihkan ke halaman utama.</div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // KONFIGURASI FIREBASE (Samakan dengan yang di login.html)
+        const firebaseConfig = {
+            apiKey: "MASUKKAN_API_KEY_ANDA",
+            authDomain: "MASUKKAN_AUTH_DOMAIN_ANDA",
+            projectId: "MASUKKAN_PROJECT_ID_ANDA",
+            storageBucket: "MASUKKAN_STORAGE_BUCKET_ANDA",
+            messagingSenderId: "MASUKKAN_MESSAGING_SENDER_ID_ANDA",
+            appId: "MASUKKAN_APP_ID_ANDA"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        function convertToEmail(username) {
+            if (!username.includes('@')) {
+                return `${username}@PerangkatGuru.local`; 
+            }
+            return username;
+        }
+
+        // Prosedur Registrasi Admin
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('reg-username').value;
+            const password = document.getElementById('reg-password').value;
+            const fakeEmail = convertToEmail(username);
+
+            try {
+                // 1. Buat User baru di Firebase Auth
+                const userCredential = await createUserWithEmailAndPassword(auth, fakeEmail, password);
+                const user = userCredential.user;
+
+                // 2. Simpan Data Dokumen User ke Firestore dengan role 'admin'
+                await setDoc(doc(db, "users", user.uid), {
+                    username: username,
+                    email: fakeEmail,
+                    role: "admin",
+                    createdAt: new Date()
+                });
+
+                alert("Registrasi Admin berhasil!");
+                // Langsung alihkan ke halaman utama/index
+                window.location.href = "index.html";
+
+            } catch (error) {
+                console.error(error);
+                alert("Registrasi gagal: " + error.message);
+            }
+        });
+    </script>
+</body>
+</html>

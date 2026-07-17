@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Perangkat Guru</title>
-    <!-- Anda bisa menambahkan link CSS / Bootstrap di sini jika ada -->
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -51,13 +50,26 @@
         button:hover {
             background-color: #0056b3;
         }
+        .loading-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255,255,255,0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+            font-weight: bold;
+            z-index: 9999;
+        }
     </style>
 </head>
 <body>
 
+    <!-- Loading Screen saat mengecek database -->
+    <div id="loading" class="loading-overlay">Memeriksa sistem...</div>
+
     <div class="login-container">
         <h2>Login Perangkat Guru</h2>
-        <!-- Form dengan ID yang sesuai dengan script -->
         <form id="login-form">
             <div class="form-group">
                 <label for="login-username">Username</label>
@@ -71,13 +83,12 @@
         </form>
     </div>
 
-    <!-- 1. LOAD FIREBASE SDK (Sesuaikan versi Firebase yang Anda gunakan) -->
-    <!-- Contoh di bawah menggunakan Firebase v9/v10 Firebase Auth via CDN -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // 2. KONFIGURASI FIREBASE (Masukkan konfigurasi dari Firebase Console Anda)
+        // KONSFIGURASI FIREBASE
         const firebaseConfig = {
             apiKey: "MASUKKAN_API_KEY_ANDA",
             authDomain: "MASUKKAN_AUTH_DOMAIN_ANDA",
@@ -87,31 +98,49 @@
             appId: "MASUKKAN_APP_ID_ANDA"
         };
 
-        // Inisialisasi Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
+        const db = getFirestore(app);
 
-        // Fungsi pembantu untuk mengubah username menjadi format email (jika diperlukan)
+        // Fungsi cek keberadaan admin di Firestore
+        async function checkAdminExists() {
+            try {
+                const usersRef = collection(db, "users");
+                const q = query(usersRef, where("role", "==", "admin"));
+                const querySnapshot = await getDocs(q);
+
+                // Jika tidak ada user dengan role admin, alihkan ke register.html
+                if (querySnapshot.empty) {
+                    window.location.href = "register.html";
+                } else {
+                    // Hilangkan loading screen jika admin ada
+                    document.getElementById('loading').style.display = 'none';
+                }
+            } catch (error) {
+                console.error("Gagal memeriksa database:", error);
+                document.getElementById('loading').innerText = "Gagal memuat sistem. Cek koneksi/konfigurasi.";
+            }
+        }
+
+        // Jalankan pengecekan otomatis saat halaman dimuat
+        window.addEventListener('DOMContentLoaded', checkAdminExists);
+
         function convertToEmail(username) {
-            // Contoh sederhana: jika user menginput 'admin', diubah menjadi 'admin@domain.com'
-            // Sesuaikan logika ini dengan sistem backend/auth Anda
             if (!username.includes('@')) {
                 return `${username}@PerangkatGuru.local`; 
             }
             return username;
         }
 
-        // 3. PROSEDUR LOGIN AMAN
+        // Prosedur Login
         document.getElementById('login-form').addEventListener('submit', async (e) => { 
             e.preventDefault(); 
-            
             const username = document.getElementById('login-username').value; 
             const password = document.getElementById('login-password').value; 
             const fakeEmail = convertToEmail(username); 
             
             try { 
-                const userCredential = await signInWithEmailAndPassword(auth, fakeEmail, password); 
-                // Pindahkan user ke halaman utama setelah sukses login 
+                await signInWithEmailAndPassword(auth, fakeEmail, password); 
                 window.location.href = "index.html"; 
             } catch (error) { 
                 console.error(error); 
@@ -119,6 +148,5 @@
             } 
         });
     </script>
-
 </body>
 </html>
