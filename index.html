@@ -6,10 +6,41 @@
     <title>Dashboard - Perangkat Guru</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     
-    <!-- SUMMERNOTE DEPENDENCIES (JQUERY & SUMMERNOTE LITE) -->
-    <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
-    <link href="https://cdn.jsdelivr.net/npm/summernote@0.9.0/dist/summernote-lite.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/summernote@0.9.0/dist/summernote-lite.min.js"></script>
+    <!-- CKEDITOR 5 DOCUMENT BUILD CDN (STABIL & 100% BERFUNGSI) -->
+    <script src="https://cdn.jsdelivr.net/npm/@ckeditor/ckeditor5-build-decoupled-document@41.1.0/build/ckeditor.js"></script>
+    
+    <style>
+        /* Membuat tampilan kertas editor mirip Microsoft Word / Google Docs */
+        .editor-container {
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            background: #f8fafc;
+        }
+        .ck-toolbar {
+            border-bottom: 1px solid #e2e8f0 !important;
+            border-top: none !important;
+            border-left: none !important;
+            border-right: none !important;
+            background: #ffffff !important;
+        }
+        .editor-scroller {
+            padding: 20px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .ck-editor__editable {
+            width: 210mm; /* Lebar kertas A4 standar */
+            min-height: 297mm;
+            padding: 2cm !important;
+            margin: 0 auto !important;
+            background: white !important;
+            border: 1px solid #e2e8f0 !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
+        }
+    </style>
 </head>
 <body class="bg-gray-50 h-screen hidden" id="main-content">
 
@@ -25,13 +56,23 @@
     </nav>
 
     <!-- Isi Konten Utama Aplikasi -->
-    <main class="p-8 max-w-5xl mx-auto">
+    <main class="p-8 max-w-6xl mx-auto">
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <h2 class="text-2xl font-bold text-gray-800 mb-2">Editor Perangkat Pembelajaran</h2>
-            <p class="text-gray-600 mb-6">Gunakan editor super lengkap di bawah ini untuk menyusun dokumen administrasi guru secara detail.</p>
+            <p class="text-gray-600 mb-6">Gunakan editor berstandar dokumen di bawah ini untuk menyusun administrasi guru dengan stabil.</p>
             
-            <!-- Tempat Editor -->
-            <div id="word-editor">Selamat datang! Tulis RPP atau modul ajar Anda di sini...</div>
+            <!-- Struktur Kontainer CKEditor 5 Document -->
+            <div class="editor-container shadow-sm">
+                <!-- Wadah Tempat Toolbar Berada -->
+                <div id="toolbar-container"></div>
+                
+                <!-- Wadah Tempat Kertas Halaman Pengetikan -->
+                <div class="editor-scroller">
+                    <div id="word-editor">
+                        <p>Selamat datang! Mulai susun RPP atau modul ajar resmi Anda di sini...</p>
+                    </div>
+                </div>
+            </div>
         </div>
     </main>
 
@@ -73,43 +114,43 @@
                 
                 mainContent.classList.remove('hidden');
                 
-                // Inisialisasi Summernote
-                initSummernote();
+                // Panggil inisialisasi CKEditor setelah elemen dipastikan render di DOM
+                initCKEditor();
             } else {
                 window.location.href = "login.html";
             }
         });
 
-        function initSummernote() {
-            $('#word-editor').summernote({
-                placeholder: 'Tulis dokumen perangkat pembelajaran di sini...',
-                tabsize: 2,
-                height: 500,
-                // Pengaturan Toolbar Super Lengkap
-                toolbar: [
-                    ['style', ['style']],
-                    ['font', ['bold', 'underline', 'clear', 'italic', 'strikethrough', 'superscript', 'subscript']],
-                    ['fontname', ['fontname']],
-                    ['fontsize', ['fontsize']],
-                    ['color', ['color']],
-                    ['para', ['ul', 'ol', 'paragraph', 'height']],
-                    ['table', ['table']],
-                    ['insert', ['link', 'picture', 'video', 'hr']],
-                    ['view', ['fullscreen', 'codeview', 'help']]
-                ],
-                // Fitur otomatis mengubah input gambar menjadi Base64 string gratis
-                callbacks: {
-                    onImageUpload: function(files) {
-                        const reader = new FileReader();
-                        reader.onloadend = function() {
-                            $('#word-editor').summernote('insertImage', reader.result);
-                        }
-                        if (files && files[0]) {
-                            reader.readAsDataURL(files[0]);
+        function initCKEditor() {
+            DecoupledEditor
+                .create(document.querySelector('#word-editor'), {
+                    // Fitur adapter bawaan gratis agar upload gambar langsung dikonversi otomatis ke Base64
+                    ckfinder: {
+                        options: {
+                            resourceType: 'Images'
                         }
                     }
-                }
-            });
+                })
+                .then(editor => {
+                    const toolbarContainer = document.querySelector('#toolbar-container');
+                    // Menyisipkan toolbar bawaan ke dalam wadah atas
+                    toolbarContainer.appendChild(editor.ui.view.toolbar.element);
+                    
+                    // Otomatis mengaktifkan fitur konversi base64 untuk drop/paste gambar
+                    editor.plugins.get('FileRepository').createUploadAdapter = (loader) => {
+                        return {
+                            upload: () => loader.file.then(file => new Promise((resolve, reject) => {
+                                const reader = new FileReader();
+                                reader.onload = () => resolve({ default: reader.result });
+                                reader.onerror = error => reject(error);
+                                reader.readAsDataURL(file);
+                            }))
+                        };
+                    };
+                })
+                .catch(error => {
+                    console.error("Gagal memuat CKEditor 5:", error);
+                });
         }
 
         document.getElementById('btn-logout').addEventListener('click', () => {
