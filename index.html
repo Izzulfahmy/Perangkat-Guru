@@ -5,44 +5,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Perangkat Guru</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    
-    <!-- CKEDITOR 5 DOCUMENT BUILD CDN (STABIL & 100% BERFUNGSI) -->
-    <script src="https://cdn.jsdelivr.net/npm/@ckeditor/ckeditor5-build-decoupled-document@41.1.0/build/ckeditor.js"></script>
+    <!-- Tambahan Font Awesome untuk ikon tombol gratis -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        /* Membuat tampilan kertas editor mirip Microsoft Word / Google Docs */
-        .editor-container {
-            display: flex;
-            flex-direction: column;
-            border: 1px solid #e2e8f0;
-            border-radius: 0.75rem;
-            overflow: hidden;
-            background: #f8fafc;
-        }
-        .ck-toolbar {
-            border-bottom: 1px solid #e2e8f0 !important;
-            border-top: none !important;
-            border-left: none !important;
-            border-right: none !important;
-            background: #ffffff !important;
-        }
-        .editor-scroller {
-            padding: 20px;
-            max-height: 600px;
-            overflow-y: auto;
-        }
-        .ck-editor__editable {
-            width: 210mm; /* Lebar kertas A4 standar */
+        /* Gaya area kertas ketik manual */
+        .editor-paper {
+            width: 210mm;
             min-height: 297mm;
-            padding: 2cm !important;
-            margin: 0 auto !important;
-            background: white !important;
-            border: 1px solid #e2e8f0 !important;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
+            padding: 2cm;
+            margin: 0 auto;
+            background: white;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            outline: none;
+        }
+        .editor-paper:focus {
+            border-color: #6366f1;
+        }
+        /* Style tambahan agar tabel di dalam editor terlihat rapi */
+        .editor-paper table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        .editor-paper table td, .editor-paper table th {
+            border: 1px solid #cbd5e1;
+            padding: 8px;
+            min-width: 50px;
         }
     </style>
 </head>
-<body class="bg-gray-50 h-screen hidden" id="main-content">
+<body class="bg-gray-100 h-screen hidden" id="main-content">
 
     <!-- Navbar -->
     <nav class="bg-indigo-600 text-white p-4 flex justify-between items-center shadow-md">
@@ -55,22 +49,60 @@
         </div>
     </nav>
 
-    <!-- Isi Konten Utama Aplikasi -->
+    <!-- Konten Utama -->
     <main class="p-8 max-w-6xl mx-auto">
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-            <h2 class="text-2xl font-bold text-gray-800 mb-2">Editor Perangkat Pembelajaran</h2>
-            <p class="text-gray-600 mb-6">Gunakan editor berstandar dokumen di bawah ini untuk menyusun administrasi guru dengan stabil.</p>
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">Editor Perangkat Pembelajaran (Manual Build)</h2>
+            <p class="text-gray-600 mb-6">Editor buatan sendiri menggunakan native JavaScript. Ringan, responsif, dan fleksibel.</p>
             
-            <!-- Struktur Kontainer CKEditor 5 Document -->
-            <div class="editor-container shadow-sm">
-                <!-- Wadah Tempat Toolbar Berada -->
-                <div id="toolbar-container"></div>
+            <!-- Toolbar Buatan Sendiri -->
+            <div class="bg-slate-50 p-2 border border-slate-200 rounded-t-xl flex flex-wrap gap-2 items-center">
+                <!-- Riwayat -->
+                <button onclick="execCmd('undo')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Undo"><i class="fa-solid fa-rotate-left"></i></button>
+                <button onclick="execCmd('redo')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Redo"><i class="fa-solid fa-rotate-right"></i></button>
+                <span class="text-slate-300">|</span>
+
+                <!-- Format Teks -->
+                <button onclick="execCmd('bold')" class="p-2 hover:bg-slate-200 rounded text-slate-700 font-bold" title="Tebal"><i class="fa-solid fa-bold"></i></button>
+                <button onclick="execCmd('italic')" class="p-2 hover:bg-slate-200 rounded text-slate-700 italic" title="Miring"><i class="fa-solid fa-italic"></i></button>
+                <button onclick="execCmd('underline')" class="p-2 hover:bg-slate-200 rounded text-slate-700 underline" title="Garis Bawah"><i class="fa-solid fa-underline"></i></button>
+                <button onclick="execCmd('strikeThrough')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Coret"><i class="fa-solid fa-strikethrough"></i></button>
+                <span class="text-slate-300">|</span>
+
+                <!-- Ukuran & Font -->
+                <select onchange="execCmd('fontSize', this.value)" class="bg-white border border-slate-200 rounded px-2 py-1 text-sm text-slate-700">
+                    <option value="3">Normal</option>
+                    <option value="1">Kecil</option>
+                    <option value="4">Sedang</option>
+                    <option value="6">Besar</option>
+                    <option value="7">Sangat Besar</option>
+                </select>
+                <span class="text-slate-300">|</span>
+
+                <!-- Rataan Kertas -->
+                <button onclick="execCmd('justifyLeft')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Rata Kiri"><i class="fa-solid fa-align-left"></i></button>
+                <button onclick="execCmd('justifyCenter')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Rata Tengah"><i class="fa-solid fa-align-center"></i></button>
+                <button onclick="execCmd('justifyRight')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Rata Kanan"><i class="fa-solid fa-align-right"></i></button>
+                <button onclick="execCmd('justifyFull')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Rata Kiri Kanan"><i class="fa-solid fa-align-justify"></i></button>
+                <span class="text-slate-300">|</span>
+
+                <!-- List/Poin -->
+                <button onclick="execCmd('insertUnorderedList')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Bullet List"><i class="fa-solid fa-list-ul"></i></button>
+                <button onclick="execCmd('insertOrderedList')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Numbered List"><i class="fa-solid fa-list-ol"></i></button>
+                <span class="text-slate-300">|</span>
+
+                <!-- Sisipkan Media Custom -->
+                <button onclick="triggerImageUpload()" class="p-2 hover:bg-indigo-100 text-indigo-600 rounded" title="Sisipkan Gambar"><i class="fa-solid fa-image"></i> Gambar</button>
+                <button onclick="insertTableManual()" class="p-2 hover:bg-emerald-100 text-emerald-600 rounded" title="Sisipkan Tabel"><i class="fa-solid fa-table"></i> Tabel</button>
                 
-                <!-- Wadah Tempat Kertas Halaman Pengetikan -->
-                <div class="editor-scroller">
-                    <div id="word-editor">
-                        <p>Selamat datang! Mulai susun RPP atau modul ajar resmi Anda di sini...</p>
-                    </div>
+                <!-- Input File Tersembunyi untuk Gambar -->
+                <input type="file" id="image-loader" accept="image/*" class="hidden" onchange="insertImageManual(this)">
+            </div>
+
+            <!-- Lembar Kerja Pengetikan -->
+            <div class="bg-slate-200 p-4 border border-t-0 border-slate-200 rounded-b-xl max-h-[600px] overflow-y-auto">
+                <div id="manual-editor" class="editor-paper prose max-w-none" contenteditable="true">
+                    <p>Mulai ketik dokumen administrasi guru secara mandiri di sini...</p>
                 </div>
             </div>
         </div>
@@ -111,47 +143,11 @@
                 } catch (err) {
                     userDisplay.textContent = "Terautentikasi";
                 }
-                
                 mainContent.classList.remove('hidden');
-                
-                // Panggil inisialisasi CKEditor setelah elemen dipastikan render di DOM
-                initCKEditor();
             } else {
                 window.location.href = "login.html";
             }
         });
-
-        function initCKEditor() {
-            DecoupledEditor
-                .create(document.querySelector('#word-editor'), {
-                    // Fitur adapter bawaan gratis agar upload gambar langsung dikonversi otomatis ke Base64
-                    ckfinder: {
-                        options: {
-                            resourceType: 'Images'
-                        }
-                    }
-                })
-                .then(editor => {
-                    const toolbarContainer = document.querySelector('#toolbar-container');
-                    // Menyisipkan toolbar bawaan ke dalam wadah atas
-                    toolbarContainer.appendChild(editor.ui.view.toolbar.element);
-                    
-                    // Otomatis mengaktifkan fitur konversi base64 untuk drop/paste gambar
-                    editor.plugins.get('FileRepository').createUploadAdapter = (loader) => {
-                        return {
-                            upload: () => loader.file.then(file => new Promise((resolve, reject) => {
-                                const reader = new FileReader();
-                                reader.onload = () => resolve({ default: reader.result });
-                                reader.onerror = error => reject(error);
-                                reader.readAsDataURL(file);
-                            }))
-                        };
-                    };
-                })
-                .catch(error => {
-                    console.error("Gagal memuat CKEditor 5:", error);
-                });
-        }
 
         document.getElementById('btn-logout').addEventListener('click', () => {
             signOut(auth).then(() => {
@@ -160,6 +156,57 @@
                 alert("Gagal logout: " + error.message);
             });
         });
+    </script>
+
+    <!-- FUNGSI NATIVE JAVASCRIPT TEXT EDITOR MANUAL -->
+    <script>
+        // Fungsi Utama pengeksekusi format teks bawaan browser
+        function execCmd(command, value = null) {
+            document.execCommand(command, false, value);
+            document.getElementById('manual-editor').focus();
+        }
+
+        // Memicu klik input file gambar
+        function triggerImageUpload() {
+            document.getElementById('image-loader').click();
+        }
+
+        // Logika konversi gambar lokal ke Base64 dan disisipkan ke dokumen
+        function insertImageManual(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    // Buat tag elemen gambar baru secara dinamis
+                    const imgHtml = `<img src="${e.target.result}" alt="Gambar Dokumen" style="max-width:100%; height:auto; margin:10px 0; border-radius:4px;"/>`;
+                    
+                    // Masukkan elemen gambar ke posisi kursor pengetikan terakhir
+                    document.execCommand('insertHTML', false, imgHtml);
+                };
+                reader.readAsDataURL(input.files[0]);
+                input.value = ''; // Reset input agar file yang sama bisa dipilih lagi
+            }
+        }
+
+        // Logika pembuatan tabel manual lewat prompt baris dan kolom
+        function insertTableManual() {
+            const rows = prompt("Masukkan jumlah baris (Rows):", "3");
+            const cols = prompt("Masukkan jumlah kolom (Columns):", "3");
+            
+            if (rows > 0 && cols > 0) {
+                let tableHtml = '<table><tbody>';
+                for (let i = 0; i < rows; i++) {
+                    tableHtml += '<tr>';
+                    for (let j = 0; j < cols; j++) {
+                        tableHtml += '<td>Ketik...</td>';
+                    }
+                    tableHtml += '</tr>';
+                }
+                tableHtml += '</tbody></table><p><br></p>';
+                
+                // Masukkan tabel ke editor
+                document.execCommand('insertHTML', false, tableHtml);
+            }
+        }
     </script>
 </body>
 </html>
