@@ -3,15 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Word Editor Component</title>
-    <!-- Tailwind & Font Awesome untuk komponen dalam editor -->
+    <title>Word Editor Component with Advanced Ruler</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
         body { margin: 0; padding: 0; background-color: #cbd5e1; font-family: Arial, sans-serif; }
         
-        /* Desain Kertas A4 & Terkunci ke Times New Roman */
+        /* Kertas A4 dengan garis tipis penanda batas margin (2cm / ~75px) */
         .editor-paper {
             width: 210mm;
             min-height: 297mm;
@@ -25,8 +24,20 @@
             line-height: 1.5;
             position: relative;
             z-index: 1;
+            
+            /* Garis bantu margin tipis (visual saja, tidak ikut tercetak/print) */
+            background-image: 
+                linear-gradient(to right, transparent 75px, #e2e8f0 75px, #e2e8f0 76px, transparent 76px),
+                linear-gradient(to right, transparent 718px, #e2e8f0 718px, #e2e8f0 719px, transparent 719px),
+                linear-gradient(to bottom, transparent 75px, #e2e8f0 75px, #e2e8f0 76px, transparent 76px);
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
         }
         
+        @media print {
+            .editor-paper { background-image: none !important; box-shadow: none !important; border: none !important; }
+        }
+
         .workspace-container {
             position: relative;
             display: inline-block;
@@ -35,71 +46,144 @@
             text-align: left;
         }
 
-        /* Penggaris Atas */
+        /* Penggaris Atas Modern dengan area putih (aktif) dan abu-abu (margin) */
         .ruler-horizontal {
             width: 210mm;
-            height: 20px;
-            background: #f1f5f9;
+            height: 35px;
+            background: #cbd5e1; /* Area margin */
             border: 1px solid #cbd5e1;
             border-bottom: none;
+            position: relative;
             display: flex;
             font-size: 9px;
             color: #64748b;
-            position: relative;
+            font-family: Arial, sans-serif;
+            user-select: none;
         }
-        .ruler-horizontal .cm-mark {
+        
+        /* Area aktif pengetikan di penggaris (sesuai lebar kertas dikurangi margin kanan kiri) */
+        .ruler-active-zone {
+            position: absolute;
+            left: 2cm;
+            right: 2cm;
+            top: 0;
+            bottom: 0;
+            background: #f1f5f9;
+            display: flex;
+        }
+
+        .ruler-active-zone .cm-mark {
             flex: 1;
             border-left: 1px solid #cbd5e1;
             height: 6px;
             padding-left: 2px;
             position: relative;
+            top: 0;
         }
-        .ruler-horizontal .cm-mark:nth-child(5n)::after {
+        .ruler-active-zone .cm-mark:nth-child(5n)::after {
             content: '';
             position: absolute;
             left: -1px;
-            height: 10px;
+            height: 12px;
             border-left: 1px solid #94a3b8;
         }
 
-        /* Penggaris Kiri */
+        /* INDENTATION MARKERS (Penanda Penggaris Word) */
+        /* 1. First Line Indent (Segitiga Atas) */
+        .marker-first-line {
+            position: absolute;
+            left: 2cm;
+            top: 2px;
+            width: 0; height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 8px solid #334155;
+            cursor: pointer;
+            z-index: 10;
+            transform: translateX(-5px);
+        }
+        /* 2. Hanging Indent (Segitiga Bawah) */
+        .marker-hanging {
+            position: absolute;
+            left: 2cm;
+            top: 12px;
+            width: 0; height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-bottom: 8px solid #334155;
+            cursor: pointer;
+            z-index: 10;
+            transform: translateX(-5px);
+        }
+        /* 3. Left Indent (Kotak Empat) */
+        .marker-left-indent {
+            position: absolute;
+            left: 2cm;
+            top: 21px;
+            width: 10px; height: 6px;
+            background: #334155;
+            cursor: pointer;
+            z-index: 10;
+            transform: translateX(-5px);
+        }
+        /* 4. Right Indent (Segitiga Kanan) */
+        .marker-right-indent {
+            position: absolute;
+            right: 2cm;
+            top: 12px;
+            width: 0; height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-bottom: 8px solid #334155;
+            cursor: pointer;
+            z-index: 10;
+            transform: translateX(-5px);
+        }
+
+        /* Penggaris Kiri (Vertical) */
         .ruler-vertical {
             position: absolute;
-            left: -20px;
-            top: 20px;
-            width: 20px;
+            left: -25px;
+            top: 35px;
+            width: 25px;
             height: 297mm;
-            background: #f1f5f9;
+            background: #cbd5e1;
             border: 1px solid #cbd5e1;
             border-right: none;
             display: flex;
             flex-direction: column;
             font-size: 9px;
             color: #64748b;
+            font-family: Arial, sans-serif;
+            user-select: none;
+        }
+        .ruler-vertical-active {
+            position: absolute;
+            top: 2cm;
+            bottom: 2cm;
+            left: 0; right: 0;
+            background: #f1f5f9;
         }
         .ruler-vertical .cm-mark-v {
             height: 1cm;
             border-top: 1px solid #cbd5e1;
             padding-top: 2px;
             padding-left: 4px;
-            position: relative;
         }
 
-        /* Tipe Penomoran Dropdown */
+        /* List & Tabel Style */
         .editor-paper ol { list-style-position: inside; margin-left: 15px; }
         .editor-paper ol[data-list-type="123"] { list-style-type: decimal !important; }
         .editor-paper ol[data-list-type="roman-upper"] { list-style-type: upper-roman !important; }
         .editor-paper ol[data-list-type="abc-lower"] { list-style-type: lower-alpha !important; }
         .editor-paper ol[data-list-type="abc-upper"] { list-style-type: upper-alpha !important; }
-
-        /* Style Tabel */
         .editor-paper table { width: 100%; border-collapse: collapse; margin: 10px 0; }
         .editor-paper table td, .editor-paper table th { border: 1px solid #cbd5e1; padding: 8px; min-width: 50px; }
     </style>
 </head>
 <body class="flex flex-col h-screen">
 
-    <!-- Toolbar Fixed di Atas Editor -->
+    <!-- Toolbar Fixed -->
     <div class="bg-slate-50 p-2 border-b border-slate-200 flex flex-wrap gap-2 items-center text-sm shadow-sm sticky top-0 z-50">
         <button onclick="execCmd('undo')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Undo"><i class="fa-solid fa-rotate-left"></i></button>
         <button onclick="execCmd('redo')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Redo"><i class="fa-solid fa-rotate-right"></i></button>
@@ -132,13 +216,27 @@
         <input type="file" id="image-loader" accept="image/*" class="hidden" onchange="insertImageManual(this)">
     </div>
 
-    <!-- Kontainer Halaman Ketik Bergerak -->
-    <div class="flex-1 overflow-auto text-center w-full">
+    <!-- Kontainer Workspace -->
+    <div class="flex-1 overflow-auto text-center w-full pl-8">
         <div class="workspace-container">
-            <div class="ruler-horizontal" id="horizontal-ruler"></div>
-            <div class="ruler-vertical" id="vertical-ruler"></div>
+            <!-- Penggaris Atas dengan Penanda Indentasi -->
+            <div class="ruler-horizontal">
+                <div class="ruler-active-zone" id="horizontal-ruler-zone"></div>
+                <!-- Penanda Visual Indentasi Word -->
+                <div class="marker-first-line" title="First Line Indent"></div>
+                <div class="marker-hanging" title="Hanging Indent"></div>
+                <div class="marker-left-indent" title="Left Indent"></div>
+                <div class="marker-right-indent" title="Right Indent"></div>
+            </div>
+            
+            <!-- Penggaris Kiri -->
+            <div class="ruler-vertical">
+                <div class="ruler-vertical-active" id="vertical-ruler-zone"></div>
+            </div>
+            
+            <!-- Kertas Kerja Utama -->
             <div id="manual-editor" class="editor-paper" contenteditable="true">
-                <p>Mulai ketik dokumen di sini...</p>
+                <p>Mulai ketik dokumen dengan batasan margin visual dan penggaris penanda lengkap di sini...</p>
             </div>
         </div>
     </div>
@@ -167,19 +265,23 @@
         }
 
         function generateRulers() {
-            const hRuler = document.getElementById('horizontal-ruler');
-            const vRuler = document.getElementById('vertical-ruler');
-            for(let i = 1; i <= 21; i++) {
+            const hZone = document.getElementById('horizontal-ruler-zone');
+            const vZone = document.getElementById('vertical-ruler-zone');
+            
+            // Lebar area aktif A4 adalah 17 cm (21cm total - 4cm margin kanan-kiri)
+            for(let i = 1; i <= 17; i++) {
                 const mark = document.createElement('div');
                 mark.className = 'cm-mark';
                 if(i % 2 === 0 || i === 1) mark.innerText = i;
-                hRuler.appendChild(mark);
+                hZone.appendChild(mark);
             }
-            for(let j = 1; j <= 29; j++) {
+
+            // Tinggi area aktif A4 (~25.7 cm)
+            for(let j = 1; j <= 25; j++) {
                 const markV = document.createElement('div');
                 markV.className = 'cm-mark-v';
                 if(j % 2 === 0 || j === 1) markV.innerText = j;
-                vRuler.appendChild(markV);
+                vZone.appendChild(markV);
             }
         }
 
@@ -233,19 +335,13 @@
             }
         }
 
-        // Jalankan inisialisasi penggaris & tab saat dokumen dimuat
         window.addEventListener('DOMContentLoaded', () => {
             generateRulers();
             setupTabKey();
         });
 
-        // HINT PENTING: Fungsi global agar file parent (index.html) bisa mengambil data ketikan teks di dalam iframe ini
-        function getContentHTML() {
-            return document.getElementById('manual-editor').innerHTML;
-        }
-        function setContentHTML(htmlContent) {
-            document.getElementById('manual-editor').innerHTML = htmlContent;
-        }
+        function getContentHTML() { return document.getElementById('manual-editor').innerHTML; }
+        function setContentHTML(htmlContent) { document.getElementById('manual-editor').innerHTML = htmlContent; }
     </script>
 </body>
 </html>
