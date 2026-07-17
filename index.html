@@ -5,11 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Perangkat Guru</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- Tambahan Font Awesome untuk ikon tombol gratis -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        /* Gaya area kertas ketik manual */
+        /* Mengunci font lembar kerja Kertas hanya Times New Roman */
         .editor-paper {
             width: 210mm;
             min-height: 297mm;
@@ -19,11 +18,27 @@
             border: 1px solid #e2e8f0;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
             outline: none;
+            
+            /* Kunci Font & Standar Administrasi Guru */
+            font-family: 'Times New Roman', Times, serif !important;
+            font-size: 16px; 
+            line-height: 1.5;
         }
         .editor-paper:focus {
             border-color: #6366f1;
         }
-        /* Style tambahan agar tabel di dalam editor terlihat rapi */
+        
+        /* Manipulasi CSS untuk Tipe Penomoran List (Ordered List) */
+        .editor-paper ol {
+            list-style-position: inside;
+            margin-left: 10px;
+        }
+        .editor-paper ol[data-list-type="123"] { list-style-type: decimal !important; }
+        .editor-paper ol[data-list-type="roman-upper"] { list-style-type: upper-roman !important; }
+        .editor-paper ol[data-list-type="abc-lower"] { list-style-type: lower-alpha !important; }
+        .editor-paper ol[data-list-type="abc-upper"] { list-style-type: upper-alpha !important; }
+
+        /* Style Tabel */
         .editor-paper table {
             width: 100%;
             border-collapse: collapse;
@@ -52,11 +67,11 @@
     <!-- Konten Utama -->
     <main class="p-8 max-w-6xl mx-auto">
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
-            <h2 class="text-2xl font-bold text-gray-800 mb-2">Editor Perangkat Pembelajaran (Manual Build)</h2>
-            <p class="text-gray-600 mb-6">Editor buatan sendiri menggunakan native JavaScript. Ringan, responsif, dan fleksibel.</p>
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">Editor Perangkat Pembelajaran (Times New Roman)</h2>
+            <p class="text-gray-600 mb-6">Editor manual terstruktur dengan pembatasan font dan opsi penomoran khusus standar RPP.</p>
             
             <!-- Toolbar Buatan Sendiri -->
-            <div class="bg-slate-50 p-2 border border-slate-200 rounded-t-xl flex flex-wrap gap-2 items-center">
+            <div class="bg-slate-50 p-2 border border-slate-200 rounded-t-xl flex flex-wrap gap-2 items-center text-sm">
                 <!-- Riwayat -->
                 <button onclick="execCmd('undo')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Undo"><i class="fa-solid fa-rotate-left"></i></button>
                 <button onclick="execCmd('redo')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Redo"><i class="fa-solid fa-rotate-right"></i></button>
@@ -69,16 +84,6 @@
                 <button onclick="execCmd('strikeThrough')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Coret"><i class="fa-solid fa-strikethrough"></i></button>
                 <span class="text-slate-300">|</span>
 
-                <!-- Ukuran & Font -->
-                <select onchange="execCmd('fontSize', this.value)" class="bg-white border border-slate-200 rounded px-2 py-1 text-sm text-slate-700">
-                    <option value="3">Normal</option>
-                    <option value="1">Kecil</option>
-                    <option value="4">Sedang</option>
-                    <option value="6">Besar</option>
-                    <option value="7">Sangat Besar</option>
-                </select>
-                <span class="text-slate-300">|</span>
-
                 <!-- Rataan Kertas -->
                 <button onclick="execCmd('justifyLeft')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Rata Kiri"><i class="fa-solid fa-align-left"></i></button>
                 <button onclick="execCmd('justifyCenter')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Rata Tengah"><i class="fa-solid fa-align-center"></i></button>
@@ -86,23 +91,24 @@
                 <button onclick="execCmd('justifyFull')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Rata Kiri Kanan"><i class="fa-solid fa-align-justify"></i></button>
                 <span class="text-slate-300">|</span>
 
-                <!-- List/Poin -->
-                <button onclick="execCmd('insertUnorderedList')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Bullet List"><i class="fa-solid fa-list-ul"></i></button>
-                <button onclick="execCmd('insertOrderedList')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Numbered List"><i class="fa-solid fa-list-ol"></i></button>
+                <!-- Fitur Penomoran Spesifik Sesuai Request -->
+                <button onclick="execListCmd('123')" class="px-2 py-1 bg-white border border-slate-200 hover:bg-slate-100 rounded text-slate-700 font-medium" title="Nomor 1, 2, 3">123</button>
+                <button onclick="execListCmd('roman-upper')" class="px-2 py-1 bg-white border border-slate-200 hover:bg-slate-100 rounded text-slate-700 font-medium" title="Romawi I, II, III">I II III</button>
+                <button onclick="execListCmd('abc-lower')" class="px-2 py-1 bg-white border border-slate-200 hover:bg-slate-100 rounded text-slate-700 font-medium" title="Abjad a, b, c">abc</button>
+                <button onclick="execListCmd('abc-upper')" class="px-2 py-1 bg-white border border-slate-200 hover:bg-slate-100 rounded text-slate-700 font-medium" title="Kapital A, B, C">ABC</button>
                 <span class="text-slate-300">|</span>
 
                 <!-- Sisipkan Media Custom -->
-                <button onclick="triggerImageUpload()" class="p-2 hover:bg-indigo-100 text-indigo-600 rounded" title="Sisipkan Gambar"><i class="fa-solid fa-image"></i> Gambar</button>
-                <button onclick="insertTableManual()" class="p-2 hover:bg-emerald-100 text-emerald-600 rounded" title="Sisipkan Tabel"><i class="fa-solid fa-table"></i> Tabel</button>
+                <button onclick="triggerImageUpload()" class="p-2 hover:bg-indigo-100 text-indigo-600 rounded font-medium" title="Sisipkan Gambar"><i class="fa-solid fa-image"></i> Gambar</button>
+                <button onclick="insertTableManual()" class="p-2 hover:bg-emerald-100 text-emerald-600 rounded font-medium" title="Sisipkan Tabel"><i class="fa-solid fa-table"></i> Tabel</button>
                 
-                <!-- Input File Tersembunyi untuk Gambar -->
                 <input type="file" id="image-loader" accept="image/*" class="hidden" onchange="insertImageManual(this)">
             </div>
 
             <!-- Lembar Kerja Pengetikan -->
             <div class="bg-slate-200 p-4 border border-t-0 border-slate-200 rounded-b-xl max-h-[600px] overflow-y-auto">
-                <div id="manual-editor" class="editor-paper prose max-w-none" contenteditable="true">
-                    <p>Mulai ketik dokumen administrasi guru secara mandiri di sini...</p>
+                <div id="manual-editor" class="editor-paper" contenteditable="true">
+                    <p>Mulai ketik dokumen administrasi guru dengan font Times New Roman di sini...</p>
                 </div>
             </div>
         </div>
@@ -158,36 +164,52 @@
         });
     </script>
 
-    <!-- FUNGSI NATIVE JAVASCRIPT TEXT EDITOR MANUAL -->
+    <!-- LOGIK EDITOR MANUAL -->
     <script>
-        // Fungsi Utama pengeksekusi format teks bawaan browser
         function execCmd(command, value = null) {
             document.execCommand(command, false, value);
             document.getElementById('manual-editor').focus();
         }
 
-        // Memicu klik input file gambar
+        // Fungsi khusus untuk menyisipkan list sesuai tipe penomoran yang dipilih
+        function execListCmd(type) {
+            // Jalankan perintah list bawaan browser terlebih dahulu
+            document.execCommand('insertOrderedList', false, null);
+            
+            // Cari elemen <ol> yang baru saja dibuat atau sedang aktif di dalam area kursor
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0) {
+                let currentElement = selection.getRangeAt(0).startContainer;
+                
+                // Cari parent elemen sampai menemukan tag OL
+                while (currentElement && currentElement.id !== 'manual-editor') {
+                    if (currentElement.nodeName === 'OL') {
+                        // Pasangkan attribute data custom agar di-render oleh CSS khusus kita
+                        currentElement.setAttribute('data-list-type', type);
+                        break;
+                    }
+                    currentElement = currentElement.parentNode;
+                }
+            }
+            document.getElementById('manual-editor').focus();
+        }
+
         function triggerImageUpload() {
             document.getElementById('image-loader').click();
         }
 
-        // Logika konversi gambar lokal ke Base64 dan disisipkan ke dokumen
         function insertImageManual(input) {
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
                 reader.onload = function (e) {
-                    // Buat tag elemen gambar baru secara dinamis
                     const imgHtml = `<img src="${e.target.result}" alt="Gambar Dokumen" style="max-width:100%; height:auto; margin:10px 0; border-radius:4px;"/>`;
-                    
-                    // Masukkan elemen gambar ke posisi kursor pengetikan terakhir
                     document.execCommand('insertHTML', false, imgHtml);
                 };
                 reader.readAsDataURL(input.files[0]);
-                input.value = ''; // Reset input agar file yang sama bisa dipilih lagi
+                input.value = '';
             }
         }
 
-        // Logika pembuatan tabel manual lewat prompt baris dan kolom
         function insertTableManual() {
             const rows = prompt("Masukkan jumlah baris (Rows):", "3");
             const cols = prompt("Masukkan jumlah kolom (Columns):", "3");
@@ -202,8 +224,6 @@
                     tableHtml += '</tr>';
                 }
                 tableHtml += '</tbody></table><p><br></p>';
-                
-                // Masukkan tabel ke editor
                 document.execCommand('insertHTML', false, tableHtml);
             }
         }
