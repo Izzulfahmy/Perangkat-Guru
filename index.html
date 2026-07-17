@@ -5,112 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Perangkat Guru</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <style>
-        /* Desain Kertas A4 & Terkunci ke Times New Roman */
-        .editor-paper {
-            width: 210mm;
-            min-height: 297mm;
-            padding: 2cm;
-            background: white;
-            border: 1px solid #cbd5e1;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            outline: none;
-            font-family: 'Times New Roman', Times, serif !important;
-            font-size: 16px; 
-            line-height: 1.5;
-            position: relative;
-            z-index: 1;
-        }
-        
-        /* Layout Pembungkus dengan Penggaris (Ruler) */
-        .workspace-container {
-            position: relative;
-            display: inline-block;
-            margin: 0 auto;
-            background: white;
-        }
-
-        /* Penggaris Atas (Horizontal Ruler) */
-        .ruler-horizontal {
-            width: 210mm;
-            height: 20px;
-            background: #f1f5f9;
-            border: 1px solid #cbd5e1;
-            border-bottom: none;
-            display: flex;
-            font-size: 9px;
-            color: #64748b;
-            position: relative;
-            font-family: Arial, sans-serif;
-        }
-        .ruler-horizontal .cm-mark {
-            flex: 1;
-            border-left: 1px solid #cbd5e1;
-            height: 6px;
-            padding-left: 2px;
-            position: relative;
-        }
-        .ruler-horizontal .cm-mark:nth-child(5n)::after {
-            content: '';
-            position: absolute;
-            left: -1px;
-            height: 10px;
-            border-left: 1px solid #94a3b8;
-        }
-
-        /* Penggaris Kiri (Vertical Ruler) */
-        .ruler-vertical {
-            position: absolute;
-            left: -20px;
-            top: 20px;
-            width: 20px;
-            height: 297mm;
-            background: #f1f5f9;
-            border: 1px solid #cbd5e1;
-            border-right: none;
-            display: flex;
-            flex-direction: column;
-            font-size: 9px;
-            color: #64748b;
-            font-family: Arial, sans-serif;
-        }
-        .ruler-vertical .cm-mark-v {
-            height: 1cm;
-            border-top: 1px solid #cbd5e1;
-            padding-top: 2px;
-            padding-left: 4px;
-            position: relative;
-        }
-
-        /* Indentasi List Ordered List CSS Manual */
-        .editor-paper ol {
-            list-style-position: inside;
-            margin-left: 15px;
-        }
-        .editor-paper ol[data-list-type="123"] { list-style-type: decimal !important; }
-        .editor-paper ol[data-list-type="roman-upper"] { list-style-type: upper-roman !important; }
-        .editor-paper ol[data-list-type="abc-lower"] { list-style-type: lower-alpha !important; }
-        .editor-paper ol[data-list-type="abc-upper"] { list-style-type: upper-alpha !important; }
-
-        /* Style Tabel Administrasi */
-        .editor-paper table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 10px 0;
-        }
-        .editor-paper table td, .editor-paper table th {
-            border: 1px solid #cbd5e1;
-            padding: 8px;
-            min-width: 50px;
-        }
-    </style>
 </head>
-<body class="bg-slate-100 h-screen hidden" id="main-content">
+<body class="bg-gray-50 h-screen hidden flex flex-col" id="main-content"> <!-- Disembunyikan dulu sampai terverifikasi login -->
 
     <!-- Navbar -->
-    <nav class="bg-indigo-600 text-white p-4 flex justify-between items-center shadow-md">
+    <nav class="bg-indigo-600 text-white p-4 flex justify-between items-center shadow-md shrink-0">
         <h1 class="text-xl font-bold">Aplikasi Perangkat Guru</h1>
         <div class="flex items-center gap-4">
             <span id="user-display" class="bg-indigo-700 px-3 py-1 rounded text-sm font-medium">Memuat profil...</span>
@@ -120,66 +19,23 @@
         </div>
     </nav>
 
-    <!-- Konten Utama Dashboard -->
-    <main class="p-6 max-w-7xl mx-auto">
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
-            <h2 class="text-2xl font-bold text-gray-800 mb-2">Editor Perangkat Pembelajaran (Manual Build)</h2>
-            <p class="text-gray-600 mb-6">Workspace dengan fitur penggaris visual, penataan dropdown nomor, dan fungsionalitas tombol Tab Word.</p>
-            
-            <!-- Toolbar Minimalis Buatan Sendiri -->
-            <div class="bg-slate-50 p-2 border border-slate-200 rounded-t-xl flex flex-wrap gap-2 items-center text-sm">
-                <!-- Riwayat Perubahan -->
-                <button onclick="execCmd('undo')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Undo"><i class="fa-solid fa-rotate-left"></i></button>
-                <button onclick="execCmd('redo')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Redo"><i class="fa-solid fa-rotate-right"></i></button>
-                <span class="text-slate-300">|</span>
-
-                <!-- Format Font Visual -->
-                <button onclick="execCmd('bold')" class="p-2 hover:bg-slate-200 rounded text-slate-700 font-bold" title="Tebal"><i class="fa-solid fa-bold"></i></button>
-                <button onclick="execCmd('italic')" class="p-2 hover:bg-slate-200 rounded text-slate-700 italic" title="Miring"><i class="fa-solid fa-italic"></i></button>
-                <button onclick="execCmd('underline')" class="p-2 hover:bg-slate-200 rounded text-slate-700 underline" title="Garis Bawah"><i class="fa-solid fa-underline"></i></button>
-                <button onclick="execCmd('strikeThrough')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Coret"><i class="fa-solid fa-strikethrough"></i></button>
-                <span class="text-slate-300">|</span>
-
-                <!-- Format Rataan Posisi Paragraf -->
-                <button onclick="execCmd('justifyLeft')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Rata Kiri"><i class="fa-solid fa-align-left"></i></button>
-                <button onclick="execCmd('justifyCenter')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Rata Tengah"><i class="fa-solid fa-align-center"></i></button>
-                <button onclick="execCmd('justifyRight')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Rata Kanan"><i class="fa-solid fa-align-right"></i></button>
-                <button onclick="execCmd('justifyFull')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Rata Kiri Kanan"><i class="fa-solid fa-align-justify"></i></button>
-                <span class="text-slate-300">|</span>
-
-                <!-- Dropdown Penomoran Ringkas -->
-                <select onchange="execListCmd(this.value); this.selectedIndex=0;" class="bg-white border border-slate-200 rounded px-2 py-1 text-xs text-slate-700 font-medium cursor-pointer">
-                    <option value="" disabled selected>🔢 Jenis Penomoran</option>
-                    <option value="123">Angka (1, 2, 3)</option>
-                    <option value="roman-upper">Romawi (I, II, III)</option>
-                    <option value="abc-lower">Huruf Kecil (a, b, c)</option>
-                    <option value="abc-upper">Huruf Kapital (A, B, C)</option>
-                </select>
-                <span class="text-slate-300">|</span>
-
-                <!-- Penyisipan Komponen Media -->
-                <button onclick="triggerImageUpload()" class="p-2 hover:bg-indigo-100 text-indigo-600 rounded font-medium" title="Sisipkan Gambar"><i class="fa-solid fa-image"></i> Gambar</button>
-                <button onclick="insertTableManual()" class="p-2 hover:bg-emerald-100 text-emerald-600 rounded font-medium" title="Sisipkan Tabel"><i class="fa-solid fa-table"></i> Tabel</button>
-                
-                <input type="file" id="image-loader" accept="image/*" class="hidden" onchange="insertImageManual(this)">
-            </div>
-
-            <!-- Area Lembar Kerja Bersama Sistem Word Ruler -->
-            <div class="bg-slate-300 p-8 border border-t-0 border-slate-200 rounded-b-xl max-h-[700px] overflow-auto text-center">
-                
-                <div class="workspace-container">
-                    <!-- Penggaris Atas -->
-                    <div class="ruler-horizontal" id="horizontal-ruler"></div>
-                    
-                    <!-- Penggaris Kiri -->
-                    <div class="ruler-vertical" id="vertical-ruler"></div>
-                    
-                    <!-- Kertas Utama -->
-                    <div id="manual-editor" class="editor-paper text-left" contenteditable="true">
-                        <p>Mulai ketik dokumen RPP atau administrasi guru di sini...</p>
-                    </div>
+    <!-- Isi Konten Utama Aplikasi -->
+    <main class="p-6 flex-1 flex flex-col max-w-7xl w-full mx-auto">
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex-1 flex flex-col">
+            <div class="mb-4 flex justify-between items-center">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-800">Editor Perangkat Pembelajaran (Modular Component)</h2>
+                    <p class="text-xs text-gray-500">Memanggil modul eksternal wordeditor.html via iframe secara dinamis.</p>
                 </div>
-
+                <!-- Tombol aksi pembuktian interaksi data antar file -->
+                <button onclick="saveDocumentAction()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition">
+                    Simpan Dokumen
+                </button>
+            </div>
+            
+            <!-- MEMANGGIL COMPONENT EDITOR VIA IFRAME -->
+            <div class="flex-1 border border-slate-300 rounded-xl overflow-hidden bg-slate-400">
+                <iframe id="editor-frame" src="wordeditor.html" class="w-full h-full border-none"></iframe>
             </div>
         </div>
     </main>
@@ -219,12 +75,8 @@
                 } catch (err) {
                     userDisplay.textContent = "Terautentikasi";
                 }
-                mainContent.classList.remove('hidden');
                 
-                // Bangun skala centimeter untuk penggaris saat halaman siap
-                generateRulers();
-                // Aktifkan interceptor tombol Tab
-                setupTabKeyFunctional();
+                mainContent.classList.remove('hidden');
             } else {
                 window.location.href = "login.html";
             }
@@ -237,111 +89,20 @@
                 alert("Gagal logout: " + error.message);
             });
         });
-    </script>
 
-    <!-- INTEGRASI LOGIKA JAVASCRIPT MANUAL EDITOR -->
-    <script>
-        function execCmd(command, value = null) {
-            document.execCommand(command, false, value);
-            document.getElementById('manual-editor').focus();
-        }
-
-        // Fungsi manipulasi penomoran via Dropdown
-        function execListCmd(type) {
-            if(!type) return;
-            document.execCommand('insertOrderedList', false, null);
+        // Fungsi Aksi untuk Mengambil data teks HTML dari dalam Iframe WordEditor
+        window.saveDocumentAction = function() {
+            const iframe = document.getElementById('editor-frame');
             
-            const selection = window.getSelection();
-            if (selection.rangeCount > 0) {
-                let currentElement = selection.getRangeAt(0).startContainer;
-                while (currentElement && currentElement.id !== 'manual-editor') {
-                    if (currentElement.nodeName === 'OL') {
-                        currentElement.setAttribute('data-list-type', type);
-                        break;
-                    }
-                    currentElement = currentElement.parentNode;
-                }
-            }
-            document.getElementById('manual-editor').focus();
-        }
-
-        // Membuat Skala Garis Penggaris (Ruler) secara Otomatis
-        function generateRulers() {
-            const hRuler = document.getElementById('horizontal-ruler');
-            const vRuler = document.getElementById('vertical-ruler');
-            
-            // Generate 21 cm untuk lebar A4
-            for(let i = 1; i <= 21; i++) {
-                const mark = document.createElement('div');
-                mark.className = 'cm-mark';
-                if(i % 2 === 0 || i === 1) mark.innerText = i;
-                hRuler.appendChild(mark);
-            }
-
-            // Generate 29 cm untuk tinggi A4
-            for(let j = 1; j <= 29; j++) {
-                const markV = document.createElement('div');
-                markV.className = 'cm-mark-v';
-                if(j % 2 === 0 || j === 1) markV.innerText = j;
-                vRuler.appendChild(markV);
-            }
-        }
-
-        // Penanganan Fungsi Tombol Tab Sesuai Standar Word
-        function setupTabKeyFunctional() {
-            const editor = document.getElementById('manual-editor');
-            editor.addEventListener('keydown', function(e) {
-                if (e.key === 'Tab') {
-                    e.preventDefault(); // Hentikan aksi default pindah fokus browser
-                    
-                    // Sisipkan 4 karakter spasi non-breaking space layaknya indentasi tab MS Word
-                    const tabNode = document.createTextNode('\u00a0\u00a0\u00a0\u00a0');
-                    const sel = window.getSelection();
-                    if (sel.rangeCount > 0) {
-                        const range = sel.getRangeAt(0);
-                        range.insertNode(tabNode);
-                        
-                        // Pindahkan kursor ke posisi akhir setelah tab disisipkan
-                        range.setStartAfter(tabNode);
-                        range.setEndAfter(tabNode);
-                        sel.removeAllRanges();
-                        sel.addRange(range);
-                    }
-                }
-            });
-        }
-
-        function triggerImageUpload() {
-            document.getElementById('image-loader').click();
-        }
-
-        function insertImageManual(input) {
-            if (input.files && input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function (e) {
-                    const imgHtml = `<img src="${e.target.result}" alt="Gambar Dokumen" style="max-width:100%; height:auto; margin:10px 0; border-radius:4px;"/>`;
-                    document.execCommand('insertHTML', false, imgHtml);
-                };
-                reader.readAsDataURL(input.files[0]);
-                input.value = '';
-            }
-        }
-
-        function insertTableManual() {
-            const rows = prompt("Masukkan jumlah baris (Rows):", "3");
-            const cols = prompt("Masukkan jumlah kolom (Columns):", "3");
-            
-            if (rows > 0 && cols > 0) {
-                let tableHtml = '<table><tbody>';
-                for (let i = 0; i < rows; i++) {
-                    tableHtml += '<tr>';
-                    for (let j = 0; j < cols; j++) {
-                        tableHtml += '<td>Ketik...</td>';
-                    }
-                    tableHtml += '</tr>';
-                }
-                tableHtml += '</tbody></table><p><br></p>';
-                document.execCommand('insertHTML', false, tableHtml);
+            // Mengakses fungsi internal getContentHTML() milik wordeditor.html
+            if (iframe && iframe.contentWindow && typeof iframe.contentWindow.getContentHTML === 'function') {
+                const htmlHasilKetik = iframe.contentWindow.getContentHTML();
+                
+                console.log("Isi teks editor:", htmlHasilKetik);
+                alert("Data teks berhasil ditarik dari Iframe! (Cek log console untuk melihat struktur HTML lengkap berkas Base64 gambar)");
+                // Di sini Anda bisa melanjutkan proses penyimpanan string htmlHasilKetik ke Firestore Cloud
+            } else {
+                alert("Gagal memuat atau mengakses komponen editor.");
             }
         }
     </script>
