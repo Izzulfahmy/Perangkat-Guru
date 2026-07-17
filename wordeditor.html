@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Word Editor Component with Advanced Ruler</title>
+    <title>Word Editor Component - Minimalist UI</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
         body { margin: 0; padding: 0; background-color: #cbd5e1; font-family: Arial, sans-serif; }
         
-        /* Kertas A4 dengan garis tipis penanda batas margin (2cm / ~75px) */
+        /* Kertas A4 dengan garis bantu margin visual */
         .editor-paper {
             width: 210mm;
             min-height: 297mm;
@@ -25,7 +25,6 @@
             position: relative;
             z-index: 1;
             
-            /* Garis bantu margin tipis (visual saja, tidak ikut tercetak/print) */
             background-image: 
                 linear-gradient(to right, transparent 75px, #e2e8f0 75px, #e2e8f0 76px, transparent 76px),
                 linear-gradient(to right, transparent 718px, #e2e8f0 718px, #e2e8f0 719px, transparent 719px),
@@ -46,11 +45,11 @@
             text-align: left;
         }
 
-        /* Penggaris Atas Modern dengan area putih (aktif) dan abu-abu (margin) */
+        /* Penggaris Atas */
         .ruler-horizontal {
             width: 210mm;
             height: 35px;
-            background: #cbd5e1; /* Area margin */
+            background: #cbd5e1;
             border: 1px solid #cbd5e1;
             border-bottom: none;
             position: relative;
@@ -61,7 +60,6 @@
             user-select: none;
         }
         
-        /* Area aktif pengetikan di penggaris (sesuai lebar kertas dikurangi margin kanan kiri) */
         .ruler-active-zone {
             position: absolute;
             left: 2cm;
@@ -78,7 +76,6 @@
             height: 6px;
             padding-left: 2px;
             position: relative;
-            top: 0;
         }
         .ruler-active-zone .cm-mark:nth-child(5n)::after {
             content: '';
@@ -88,90 +85,37 @@
             border-left: 1px solid #94a3b8;
         }
 
-        /* INDENTATION MARKERS (Penanda Penggaris Word) */
-        /* 1. First Line Indent (Segitiga Atas) */
+        /* Penanda Indentasi */
         .marker-first-line {
-            position: absolute;
-            left: 2cm;
-            top: 2px;
-            width: 0; height: 0;
-            border-left: 5px solid transparent;
-            border-right: 5px solid transparent;
-            border-top: 8px solid #334155;
-            cursor: pointer;
-            z-index: 10;
-            transform: translateX(-5px);
+            position: absolute; left: 2cm; top: 2px; width: 0; height: 0;
+            border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 8px solid #334155;
+            cursor: pointer; z-index: 10; transform: translateX(-5px);
         }
-        /* 2. Hanging Indent (Segitiga Bawah) */
         .marker-hanging {
-            position: absolute;
-            left: 2cm;
-            top: 12px;
-            width: 0; height: 0;
-            border-left: 5px solid transparent;
-            border-right: 5px solid transparent;
-            border-bottom: 8px solid #334155;
-            cursor: pointer;
-            z-index: 10;
-            transform: translateX(-5px);
+            position: absolute; left: 2cm; top: 12px; width: 0; height: 0;
+            border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 8px solid #334155;
+            cursor: pointer; z-index: 10; transform: translateX(-5px);
         }
-        /* 3. Left Indent (Kotak Empat) */
         .marker-left-indent {
-            position: absolute;
-            left: 2cm;
-            top: 21px;
-            width: 10px; height: 6px;
-            background: #334155;
-            cursor: pointer;
-            z-index: 10;
-            transform: translateX(-5px);
+            position: absolute; left: 2cm; top: 21px; width: 10px; height: 6px;
+            background: #334155; cursor: pointer; z-index: 10; transform: translateX(-5px);
         }
-        /* 4. Right Indent (Segitiga Kanan) */
         .marker-right-indent {
-            position: absolute;
-            right: 2cm;
-            top: 12px;
-            width: 0; height: 0;
-            border-left: 5px solid transparent;
-            border-right: 5px solid transparent;
-            border-bottom: 8px solid #334155;
-            cursor: pointer;
-            z-index: 10;
-            transform: translateX(-5px);
+            position: absolute; right: 2cm; top: 12px; width: 0; height: 0;
+            border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 8px solid #334155;
+            cursor: pointer; z-index: 10; transform: translateX(-5px);
         }
 
-        /* Penggaris Kiri (Vertical) */
+        /* Penggaris Kiri */
         .ruler-vertical {
-            position: absolute;
-            left: -25px;
-            top: 35px;
-            width: 25px;
-            height: 297mm;
-            background: #cbd5e1;
-            border: 1px solid #cbd5e1;
-            border-right: none;
-            display: flex;
-            flex-direction: column;
-            font-size: 9px;
-            color: #64748b;
-            font-family: Arial, sans-serif;
-            user-select: none;
+            position: absolute; left: -25px; top: 35px; width: 25px; height: 297mm;
+            background: #cbd5e1; border: 1px solid #cbd5e1; border-right: none;
+            display: flex; flex-direction: column; font-size: 9px; color: #64748b; font-family: Arial, sans-serif; user-select: none;
         }
-        .ruler-vertical-active {
-            position: absolute;
-            top: 2cm;
-            bottom: 2cm;
-            left: 0; right: 0;
-            background: #f1f5f9;
-        }
-        .ruler-vertical .cm-mark-v {
-            height: 1cm;
-            border-top: 1px solid #cbd5e1;
-            padding-top: 2px;
-            padding-left: 4px;
-        }
+        .ruler-vertical-active { position: absolute; top: 2cm; bottom: 2cm; left: 0; right: 0; background: #f1f5f9; }
+        .ruler-vertical .cm-mark-v { height: 1cm; border-top: 1px solid #cbd5e1; padding-top: 2px; padding-left: 4px; }
 
-        /* List & Tabel Style */
+        /* List & Tabel */
         .editor-paper ol { list-style-position: inside; margin-left: 15px; }
         .editor-paper ol[data-list-type="123"] { list-style-type: decimal !important; }
         .editor-paper ol[data-list-type="roman-upper"] { list-style-type: upper-roman !important; }
@@ -179,50 +123,65 @@
         .editor-paper ol[data-list-type="abc-upper"] { list-style-type: upper-alpha !important; }
         .editor-paper table { width: 100%; border-collapse: collapse; margin: 10px 0; }
         .editor-paper table td, .editor-paper table th { border: 1px solid #cbd5e1; padding: 8px; min-width: 50px; }
+        
+        /* Utility class untuk pemisah grup tombol toolbar */
+        .toolbar-divider { width: 1px; height: 20px; background-color: #cbd5e1; margin: 0 4px; }
     </style>
 </head>
 <body class="flex flex-col h-screen">
 
-    <!-- Toolbar Fixed -->
-    <div class="bg-slate-50 p-2 border-b border-slate-200 flex flex-wrap gap-2 items-center text-sm shadow-sm sticky top-0 z-50">
-        <button onclick="execCmd('undo')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Undo"><i class="fa-solid fa-rotate-left"></i></button>
-        <button onclick="execCmd('redo')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Redo"><i class="fa-solid fa-rotate-right"></i></button>
-        <span class="text-slate-300">|</span>
+    <!-- Toolbar Fixed dengan Simbol Minimalis Modern -->
+    <div class="bg-white p-1.5 border-b border-slate-200 flex flex-wrap gap-1 items-center shadow-xs sticky top-0 z-50 select-none">
+        
+        <!-- Grup Riwayat -->
+        <button onclick="execCmd('undo')" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 active:bg-slate-200 rounded text-slate-600 transition" title="Undo (Ctrl+Z)"><i class="fa-solid fa-rotate-left text-sm"></i></button>
+        <button onclick="execCmd('redo')" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 active:bg-slate-200 rounded text-slate-600 transition" title="Redo (Ctrl+Y)"><i class="fa-solid fa-rotate-right text-sm"></i></button>
+        
+        <div class="toolbar-divider"></div>
 
-        <button onclick="execCmd('bold')" class="p-2 hover:bg-slate-200 rounded text-slate-700 font-bold" title="Tebal"><i class="fa-solid fa-bold"></i></button>
-        <button onclick="execCmd('italic')" class="p-2 hover:bg-slate-200 rounded text-slate-700 italic" title="Miring"><i class="fa-solid fa-italic"></i></button>
-        <button onclick="execCmd('underline')" class="p-2 hover:bg-slate-200 rounded text-slate-700 underline" title="Garis Bawah"><i class="fa-solid fa-underline"></i></button>
-        <button onclick="execCmd('strikeThrough')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Coret"><i class="fa-solid fa-strikethrough"></i></button>
-        <span class="text-slate-300">|</span>
+        <!-- Gaya & Format Teks Pokok -->
+        <button onclick="execCmd('bold')" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 active:bg-slate-200 rounded text-slate-700 font-bold transition" title="Tebal (Ctrl+B)"><i class="fa-solid fa-bold text-sm"></i></button>
+        <button onclick="execCmd('italic')" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 active:bg-slate-200 rounded text-slate-700 transition" title="Miring (Ctrl+I)"><i class="fa-solid fa-italic text-sm"></i></button>
+        <button onclick="execCmd('underline')" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 active:bg-slate-200 rounded text-slate-700 transition" title="Garis Bawah (Ctrl+U)"><i class="fa-solid fa-underline text-sm"></i></button>
+        <button onclick="execCmd('strikeThrough')" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 active:bg-slate-200 rounded text-slate-700 transition" title="Coret Teks"><i class="fa-solid fa-strikethrough text-sm"></i></button>
+        
+        <div class="toolbar-divider"></div>
 
-        <button onclick="execCmd('justifyLeft')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Rata Kiri"><i class="fa-solid fa-align-left"></i></button>
-        <button onclick="execCmd('justifyCenter')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Rata Tengah"><i class="fa-solid fa-align-center"></i></button>
-        <button onclick="execCmd('justifyRight')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Rata Kanan"><i class="fa-solid fa-align-right"></i></button>
-        <button onclick="execCmd('justifyFull')" class="p-2 hover:bg-slate-200 rounded text-slate-700" title="Rata Kiri Kanan"><i class="fa-solid fa-align-justify"></i></button>
-        <span class="text-slate-300">|</span>
+        <!-- Format Rataan Posisi Paragraf -->
+        <button onclick="execCmd('justifyLeft')" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 active:bg-slate-200 rounded text-slate-600 transition" title="Rata Kiri"><i class="fa-solid fa-align-left text-sm"></i></button>
+        <button onclick="execCmd('justifyCenter')" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 active:bg-slate-200 rounded text-slate-600 transition" title="Rata Tengah"><i class="fa-solid fa-align-center text-sm"></i></button>
+        <button onclick="execCmd('justifyRight')" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 active:bg-slate-200 rounded text-slate-600 transition" title="Rata Kanan"><i class="fa-solid fa-align-right text-sm"></i></button>
+        <button onclick="execCmd('justifyFull')" class="w-8 h-8 flex items-center justify-center hover:bg-slate-100 active:bg-slate-200 rounded text-slate-600 transition" title="Justify (Rata Kiri Kanan)"><i class="fa-solid fa-align-justify text-sm"></i></button>
+        
+        <div class="toolbar-divider"></div>
 
-        <select onchange="execListCmd(this.value); this.selectedIndex=0;" class="bg-white border border-slate-200 rounded px-2 py-1 text-xs text-slate-700 font-medium cursor-pointer">
-            <option value="" disabled selected>🔢 Jenis Penomoran</option>
-            <option value="123">Angka (1, 2, 3)</option>
-            <option value="roman-upper">Romawi (I, II, III)</option>
-            <option value="abc-lower">Huruf Kecil (a, b, c)</option>
-            <option value="abc-upper">Huruf Kapital (A, B, C)</option>
-        </select>
-        <span class="text-slate-300">|</span>
+        <!-- Dropdown Penomoran Ringkas Gaya Word -->
+        <div class="relative flex items-center">
+            <span class="text-xs text-slate-400 mr-1.5"><i class="fa-solid fa-list-ol"></i></span>
+            <select onchange="execListCmd(this.value); this.selectedIndex=0;" class="bg-slate-50 border border-slate-200 rounded-md px-1.5 py-1 text-xs text-slate-700 font-medium cursor-pointer outline-none hover:border-indigo-400 max-w-[110px]">
+                <option value="" disabled selected>Penomoran</option>
+                <option value="123">1, 2, 3</option>
+                <option value="roman-upper">I, II, III</option>
+                <option value="abc-lower">a, b, c</option>
+                <option value="abc-upper">A, B, C</option>
+            </select>
+        </div>
+        
+        <div class="toolbar-divider"></div>
 
-        <button onclick="triggerImageUpload()" class="p-2 hover:bg-indigo-100 text-indigo-600 rounded font-medium" title="Sisipkan Gambar"><i class="fa-solid fa-image"></i> Gambar</button>
-        <button onclick="insertTableManual()" class="p-2 hover:bg-emerald-100 text-emerald-600 rounded font-medium" title="Sisipkan Tabel"><i class="fa-solid fa-table"></i> Tabel</button>
+        <!-- Elemen Sisipan Objek Medis (Hanya Ikon Simbol) -->
+        <button onclick="triggerImageUpload()" class="w-8 h-8 flex items-center justify-center hover:bg-indigo-50 text-indigo-600 rounded transition" title="Sisipkan File Gambar"><i class="fa-regular fa-image text-base"></i></button>
+        <button onclick="insertTableManual()" class="w-8 h-8 flex items-center justify-center hover:bg-emerald-50 text-emerald-600 rounded transition" title="Sisipkan Format Tabel"><i class="fa-solid fa-table text-base"></i></button>
         
         <input type="file" id="image-loader" accept="image/*" class="hidden" onchange="insertImageManual(this)">
     </div>
 
-    <!-- Kontainer Workspace -->
+    <!-- Kontainer Lembar Kerja Kertas -->
     <div class="flex-1 overflow-auto text-center w-full pl-8">
         <div class="workspace-container">
-            <!-- Penggaris Atas dengan Penanda Indentasi -->
+            <!-- Penggaris Atas -->
             <div class="ruler-horizontal">
                 <div class="ruler-active-zone" id="horizontal-ruler-zone"></div>
-                <!-- Penanda Visual Indentasi Word -->
                 <div class="marker-first-line" title="First Line Indent"></div>
                 <div class="marker-hanging" title="Hanging Indent"></div>
                 <div class="marker-left-indent" title="Left Indent"></div>
@@ -236,7 +195,7 @@
             
             <!-- Kertas Kerja Utama -->
             <div id="manual-editor" class="editor-paper" contenteditable="true">
-                <p>Mulai ketik dokumen dengan batasan margin visual dan penggaris penanda lengkap di sini...</p>
+                <p>Mulai ketik dokumen dengan tampilan toolbar simbol yang rapi di sini...</p>
             </div>
         </div>
     </div>
@@ -268,7 +227,6 @@
             const hZone = document.getElementById('horizontal-ruler-zone');
             const vZone = document.getElementById('vertical-ruler-zone');
             
-            // Lebar area aktif A4 adalah 17 cm (21cm total - 4cm margin kanan-kiri)
             for(let i = 1; i <= 17; i++) {
                 const mark = document.createElement('div');
                 mark.className = 'cm-mark';
@@ -276,7 +234,6 @@
                 hZone.appendChild(mark);
             }
 
-            // Tinggi area aktif A4 (~25.7 cm)
             for(let j = 1; j <= 25; j++) {
                 const markV = document.createElement('div');
                 markV.className = 'cm-mark-v';
@@ -285,6 +242,7 @@
             }
         }
 
+        // Interseptor Tab agar menyisipkan spasi konstan alih-alih merusak fokus
         function setupTabKey() {
             const editor = document.getElementById('manual-editor');
             editor.addEventListener('keydown', function(e) {
