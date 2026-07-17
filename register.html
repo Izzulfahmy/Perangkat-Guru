@@ -79,12 +79,10 @@
     </div>
 
     <script type="module">
-        // Perbaikan: Menggunakan URL CDN resmi untuk HTML statis
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Konfigurasi Firebase Anda yang sudah valid
         const firebaseConfig = {
           apiKey: "AIzaSyBrvRy59biZZilEgp8HIpHIUA16PcaflJU",
           authDomain: "perangkat-guru-85e8f.firebaseapp.com",
@@ -99,6 +97,22 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
+        // Proteksi Halaman: Jika admin sudah ada, tendang balik ke login.html
+        async function protectRegisterPage() {
+            try {
+                const usersRef = collection(db, "users");
+                const q = query(usersRef, where("role", "==", "admin"));
+                const querySnapshot = await getDocs(q);
+                if (!querySnapshot.empty) {
+                    window.location.href = "login.html";
+                }
+            } catch (error) {
+                // Jika error rule (harus login), berarti data admin eksis di db
+                window.location.href = "login.html";
+            }
+        }
+        window.addEventListener('DOMContentLoaded', protectRegisterPage);
+
         function convertToEmail(username) {
             if (!username.includes('@')) {
                 return `${username}@perangkatguru.local`; 
@@ -108,7 +122,6 @@
 
         document.getElementById('register-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
             const username = document.getElementById('reg-username').value;
             const password = document.getElementById('reg-password').value;
             const fakeEmail = convertToEmail(username);
@@ -126,7 +139,6 @@
 
                 alert("Registrasi Admin berhasil!");
                 window.location.href = "index.html";
-
             } catch (error) {
                 console.error(error);
                 alert("Registrasi gagal: " + error.message);

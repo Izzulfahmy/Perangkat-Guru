@@ -83,12 +83,10 @@
     </div>
 
     <script type="module">
-        // Perbaikan: Menggunakan URL CDN resmi untuk HTML statis
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Konfigurasi Firebase Anda yang sudah valid
         const firebaseConfig = {
           apiKey: "AIzaSyBrvRy59biZZilEgp8HIpHIUA16PcaflJU",
           authDomain: "perangkat-guru-85e8f.firebaseapp.com",
@@ -103,24 +101,36 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        async function checkAdminExists() {
+        // Pengecekan berbasis Status Auth agar tidak bentrok saat logout
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // Jika user sudah masuk, langsung arahkan ke index
+                window.location.href = "index.html";
+            } else {
+                // Jika belum masuk/habis logout, cek apakah database benar-benar kosong (awal setup)
+                await checkDatabaseSetup();
+            }
+        });
+
+        async function checkDatabaseSetup() {
             try {
                 const usersRef = collection(db, "users");
                 const q = query(usersRef, where("role", "==", "admin"));
                 const querySnapshot = await getDocs(q);
 
                 if (querySnapshot.empty) {
+                    // Hanya pindah ke register jika admin sama sekali belum terdaftar di sistem
                     window.location.href = "register.html";
                 } else {
                     document.getElementById('loading').style.display = 'none';
                 }
             } catch (error) {
-                console.error("Gagal memeriksa database:", error);
-                document.getElementById('loading').innerText = "Gagal memuat sistem. Periksa Firestore Rules Anda.";
+                console.error("Firebase Auth/Firestore Restrict Error:", error);
+                // Jika error disebabkan aturan rule (harus login), berarti admin SEBENARNYA SUDAH ADA. 
+                // Maka tetap tampilkan halaman login (bukan register).
+                document.getElementById('loading').style.display = 'none';
             }
         }
-
-        window.addEventListener('DOMContentLoaded', checkAdminExists);
 
         function convertToEmail(username) {
             if (!username.includes('@')) {
