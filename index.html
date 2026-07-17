@@ -6,9 +6,9 @@
     <title>Dashboard - Perangkat Guru</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     
-    <!-- JODIT EDITOR CSS & JS (GRATIS & SANGAT LENGKAP) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jodit/3.24.2/jodit.min.css"/>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jodit/3.24.2/jodit.min.js"></script>
+    <!-- TOAST UI EDITOR STYLE & SCRIPT (100% GRATIS) -->
+    <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor.min.css" />
+    <script src="https://uicdn.toast.com/editor/latest/toastui-editor-all.min.js"></script>
 </head>
 <body class="bg-gray-50 h-screen hidden" id="main-content">
 
@@ -27,10 +27,10 @@
     <main class="p-8 max-w-5xl mx-auto">
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <h2 class="text-2xl font-bold text-gray-800 mb-2">Editor Perangkat Pembelajaran</h2>
-            <p class="text-gray-600 mb-6">Gunakan editor Jodit untuk menyusun dokumen administrasi guru secara lengkap.</p>
+            <p class="text-gray-600 mb-6">Gunakan editor TOAST UI modern di bawah ini untuk menyusun dokumen administrasi guru.</p>
             
-            <!-- Tempat Editor -->
-            <textarea id="word-editor">Selamat datang! Tulis RPP atau modul ajar Anda di sini...</textarea>
+            <!-- Wadah Elemen Tempat TOAST UI Editor Akan Merender -->
+            <div id="word-editor" class="bg-white"></div>
         </div>
     </main>
 
@@ -72,33 +72,39 @@
                 
                 mainContent.classList.remove('hidden');
                 
-                // Inisialisasi Jodit Editor
-                initJoditEditor();
+                // Inisialisasi TOAST UI Editor setelah login tervalidasi
+                initToastEditor();
             } else {
                 window.location.href = "login.html";
             }
         });
 
-        function initJoditEditor() {
-            new Jodit('#word-editor', {
-                height: 500,
-                language: 'id', // Mendukung penuh Bahasa Indonesia bawaan tanpa plugin tambahan
-                toolbarButtonSize: 'middle',
-                buttons: [
-                    'source', '|',
-                    'bold', 'strikethrough', 'underline', 'italic', '|',
-                    'superscript', 'subscript', '|',
-                    'ul', 'ol', '|',
-                    'outdent', 'indent', '|',
-                    'font', 'fontsize', 'brush', 'paragraph', '|',
-                    'image', 'video', 'table', 'link', '|',
-                    'align', 'undo', 'redo', '|',
-                    'hr', 'eraser', 'copyformat', '|',
-                    'symbol', 'fullSize', 'preview', 'print'
+        function initToastEditor() {
+            const editor = new toastui.Editor({
+                el: document.querySelector('#word-editor'),
+                height: '500px',
+                initialValue: 'Selamat datang! Tulis dokumen administrasi atau RPP Anda di sini...',
+                initialEditType: 'wysiwyg', // Tampilan default mode word-style biasa
+                previewStyle: 'vertical',
+                // Konfigurasi toolbar lengkap
+                toolbarItems: [
+                    ['heading', 'bold', 'italic', 'strike'],
+                    ['hr', 'quote'],
+                    ['ul', 'ol', 'task', 'indent', 'outdent'],
+                    ['table', 'image', 'link'],
+                    ['code', 'codeblock']
                 ],
-                // Mengaktifkan fitur upload gambar lokal otomatis dikonversi ke Base64
-                uploader: {
-                    insertImageAsBase64URI: true
+                // Fitur interseptor agar gambar yang dipilih dikonversi otomatis menjadi Base64 string
+                hooks: {
+                    addImageBlobHook: (blob, callback) => {
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                            // Kirim data base64 url ke editor
+                            callback(reader.result, blob.name);
+                        };
+                        reader.readAsDataURL(blob);
+                        return false; 
+                    }
                 }
             });
         }
