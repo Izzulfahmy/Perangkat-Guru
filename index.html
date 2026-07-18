@@ -534,6 +534,7 @@
         setUsersDb(prev => [...prev, added]); setNewUser({ name: '', username: '', nim: '' });
       };
 
+      // 🛠️ RE-DESIGNED MINIMALIST EDIT USER POPUP (UI UPGRADE)
       const handleEditUser = (clientObj) => {
         Swal.fire({
           title: '<h2 class="text-xl font-bold text-slate-800">Update Data Guru</h2><p class="text-xs text-slate-400 font-medium mt-1">Kelola kredensial akses guru di sistem</p>',
@@ -553,91 +554,47 @@
               </div>
             </div>
           `,
-          showCancelButton: true, confirmButtonText: 'Simpan Perubahan', cancelButtonText: 'Batal', buttonsStyling: false,
-          customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm', confirmButton: 'w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl transition-all mb-2 mt-4 text-sm shadow-md shadow-blue-200', cancelButton: 'w-full bg-slate-100 hover:bg-slate-200 text-slate-500 font-bold py-3.5 px-4 rounded-xl transition-all text-sm', actions: 'flex flex-col w-full p-0' },
+          showCancelButton: true,
+          confirmButtonText: 'Simpan Perubahan',
+          cancelButtonText: 'Batal',
+          buttonsStyling: false,
+          customClass: { 
+            popup: 'swal2-minimalist-popup w-[90%] max-w-sm',
+            confirmButton: 'w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl transition-all mb-2 mt-4 text-sm shadow-md shadow-blue-200',
+            cancelButton: 'w-full bg-slate-100 hover:bg-slate-200 text-slate-500 font-bold py-3.5 px-4 rounded-xl transition-all text-sm',
+            actions: 'flex flex-col w-full p-0'
+          },
           preConfirm: () => {
             const name = document.getElementById('swal-n').value.trim();
             const username = document.getElementById('swal-u').value.trim();
             const nim = document.getElementById('swal-nim').value.trim();
-            if(!name || !username) { Swal.showValidationMessage('Nama dan Username wajib diisi!'); return false; }
+            
+            if(!name || !username) {
+              Swal.showValidationMessage('Nama dan Username wajib diisi!');
+              return false;
+            }
             return { ...clientObj, name, username, nim };
           }
         }).then(async (result) => {
           if (result.isConfirmed) {
-            Swal.fire({ html: '<div class="flex items-center space-x-3 justify-center"><div class="w-5 h-5 border-2 border-slate-200 border-t-blue-600 rounded-full animate-spin"></div><span class="text-sm font-bold text-slate-600">Menyimpan...</span></div>', allowOutsideClick: false, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-48' } });
+            Swal.fire({
+              html: '<div class="flex items-center space-x-3 justify-center"><div class="w-5 h-5 border-2 border-slate-200 border-t-blue-600 rounded-full animate-spin"></div><span class="text-sm font-bold text-slate-600">Menyimpan...</span></div>',
+              allowOutsideClick: false, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-48' }
+            });
             try {
               await window.fs.setDoc(window.fs.doc(window.db, "users", result.value.id.toString()), result.value);
               setUsersDb(prev => prev.map(u => u.id === clientObj.id ? result.value : u));
               Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Data guru berhasil diperbarui.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
-            } catch(e) { Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menyimpan perubahan ke cloud.' }); }
+            } catch(e) {
+              console.error(e);
+              Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menyimpan perubahan ke cloud.' });
+            }
           }
         });
       };
 
-      // 🛡️ RE-DESIGNED DELETE USER WITH ROLES ACCREDITATION CHECKING (VALIDASI JABATAN)
       const handleDeleteUser = (id) => {
-        const targetTeacher = usersDb.find(u => u.id === id);
-        if (!targetTeacher) return;
-
-        // 1. Cek Jabatan Kepala Sekolah
-        const assignedAsHeadmaster = academicYearsDb.filter(ay => ay.headmaster && ay.headmaster.trim().toLowerCase() === targetTeacher.name.trim().toLowerCase());
-        
-        // 2. Cek Jabatan Wali Kelas
-        const assignedAsHomeroom = rombelsDb.filter(rb => rb.teacherId && rb.teacherId.toString() === id.toString());
-
-        // 3. Jika guru memiliki jabatan aktif, blokir aksi penghapusan
-        if (assignedAsHeadmaster.length > 0 || assignedAsHomeroom.length > 0) {
-          let rolesMessage = [];
-          if (assignedAsHeadmaster.length > 0) rolesMessage.push(`<b>Kepala Sekolah</b> (${assignedAsHeadmaster.map(a => a.year).join(', ')})`);
-          if (assignedAsHomeroom.length > 0) rolesMessage.push(`<b>Wali Kelas</b> (Kelas ${assignedAsHomeroom.map(r => r.name).join(', ')})`);
-
-          Swal.fire({
-            icon: 'error',
-            title: '<h2 class="text-lg font-bold text-red-600">Penghapusan Ditolak</h2>',
-            html: `
-              <div class="text-slate-600 text-sm leading-relaxed mt-2">
-                Guru <b>${targetTeacher.name}</b> tidak dapat dihapus dari sistem karena saat ini terdaftar aktif memegang peran sebagai:<br/>
-                <div class="mt-3 bg-red-50 text-red-700 p-3 rounded-xl border border-red-100 text-xs text-left space-y-1">
-                  ${rolesMessage.map(m => `<div><i class="fas fa-exclamation-circle mr-1.5"></i>${m}</div>`).join('')}
-                </div>
-                <p class="text-[10px] text-slate-400 font-semibold mt-4">
-                  *Silakan ganti penanggung jawab peran tersebut terlebih dahulu di menu Tahun Pelajaran atau Rombel sebelum menghapus guru ini.
-                </p>
-              </div>
-            `,
-            confirmButtonText: 'Saya Mengerti',
-            buttonsStyling: false,
-            customClass: {
-              popup: 'swal2-minimalist-popup w-[90%] max-w-sm',
-              confirmButton: 'w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all text-sm'
-            }
-          });
-          return;
-        }
-
-        // 4. Jika bersih jabatan, berikan popup konfirmasi opsional Yakin / Tidak
-        Swal.fire({
-          title: '<h2 class="text-lg font-bold text-slate-800">Hapus Data Guru?</h2>',
-          text: `Apakah Anda yakin ingin menghapus data guru ${targetTeacher.name}? Semua riwayat akses login miliknya akan dicabut.`,
-          icon: 'warning',
-          showCancelButton: true,
-          confirmButtonText: 'Ya, Hapus',
-          cancelButtonText: 'Tidak, Batal',
-          buttonsStyling: false,
-          customClass: { 
-            popup: 'swal2-minimalist-popup w-[90%] max-w-sm',
-            confirmButton: 'w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-xl transition-all mb-2 mt-4 text-sm shadow-md shadow-red-100',
-            cancelButton: 'w-full bg-slate-100 hover:bg-slate-200 text-slate-500 font-bold py-3 px-4 rounded-xl transition-all text-sm',
-            actions: 'flex flex-col w-full p-0'
-          }
-        }).then((result) => {
-          if (result.isConfirmed) {
-            window.fs.deleteDoc(window.fs.doc(window.db, "users", id.toString())).then(() => {
-              setUsersDb(prev => prev.filter(u => u.id !== id));
-              Swal.fire({ icon: 'success', title: 'Terhapus!', text: 'Data guru telah dihapus dari sistem.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
-            }).catch(e => console.error(e));
-          }
-        });
+        window.fs.deleteDoc(window.fs.doc(window.db, "users", id.toString())).then(() => setUsersDb(prev => prev.filter(u => u.id !== id)));
       };
 
       const handleAddStudentModal = () => {
@@ -746,8 +703,6 @@
         if (!selectedRombel || !selectedRombel.studentIds) return [];
         return studentsDb.filter(s => selectedRombel.studentIds.includes(s.id));
       }, [studentsDb, selectedRombel]);
-
-      if (!isModulesLoaded || isLoading) return null;
 
       if (isSystemEmpty) return (
         <div className="h-screen flex items-center justify-center p-4 bg-slate-100">
