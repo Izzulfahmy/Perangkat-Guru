@@ -15,8 +15,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   
   <style>
@@ -45,7 +43,7 @@
     }
   </style>
 
-  <!-- PONDASI CORE: FIREBASE DAN UTILITAS UTAMA -->
+  <!-- CORE FOUNDATION: INTERNAL FIREBASE CONFIG & SINKRONISASI UTILS -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
     import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
@@ -114,20 +112,24 @@
   <!-- MOUNT ROOT POINT -->
   <div id="root" class="min-h-screen w-full"></div>
 
-  <!-- ORCHESTRATOR ENGINE UTAMA -->
+  <!-- MEMUAT SUB-MODUL SECARA BERURUTAN & MENDAFTARKANNYA KE WINDOW GLOBAL SCOPE -->
+  <script type="text/babel" data-presets="react,env" src="./js/kalender-akademik.js" onload="if(typeof KalenderAcademicView!=='undefined')window.KalenderAcademicView=KalenderAcademicView"></script>
+  <script type="text/babel" data-presets="react,env" src="./js/dashboard-guru.js" onload="if(typeof DashboardGuruView!=='undefined')window.DashboardGuruView=DashboardGuruView"></script>
+  <script type="text/babel" data-presets="react,env" src="./js/riwayat-guru.js" onload="if(typeof RiwayatGuruView!=='undefined')window.RiwayatGuruView=RiwayatGuruView"></script>
+  <script type="text/babel" data-presets="react,env" src="./js/dashboard-admin.js" onload="if(typeof DashboardAdminView!=='undefined')window.DashboardAdminView=DashboardAdminView"></script>
+  <script type="text/babel" data-presets="react,env" src="./js/tahun-pelajaran.js" onload="if(typeof TahunPelajaranView!=='undefined')window.TahunPelajaranView=TahunPelajaranView"></script>
+  <script type="text/babel" data-presets="react,env" src="./js/data-guru.js" onload="if(typeof DataGuruView!=='undefined')window.DataGuruView=DataGuruView"></script>
+  <script type="text/babel" data-presets="react,env" src="./js/data-murid.js" onload="if(typeof DataMuridView!=='undefined')window.DataMuridView=DataMuridView"></script>
+  <script type="text/babel" data-presets="react,env" src="./js/data-rombel.js" onload="if(typeof DataRombelView!=='undefined')window.DataRombelView=DataRombelView"></script>
+  <script type="text/babel" data-presets="react,env" src="./js/laporan-presensi.js" onload="if(typeof LaporanPresensiView!=='undefined')window.LaporanPresensiView=LaporanPresensiView"></script>
+  <script type="text/babel" data-presets="react,env" src="./js/profil-sekolah.js" onload="if(typeof ProfilSekolahView!=='undefined')window.ProfilSekolahView=ProfilSekolahView"></script>
+
+  <!-- LOGIKA APP ORCHESTRATOR UTAMA (ENTRY POINT) -->
   <script type="text/babel" data-presets="react,env">
     const { useState, useEffect, useMemo } = React;
 
-    // Daftar module eksternal yang akan dimuat ke scope global secara dinamis
-    const subModules = [
-      'kalender-akademik', 'dashboard-guru', 'riwayat-guru', 
-      'dashboard-admin', 'tahun-pelajaran', 'data-guru', 
-      'data-murid', 'data-rombel', 'laporan-presensi', 'profil-sekolah'
-    ];
-
     function App() {
       const [isLoading, setIsLoading] = useState(true);
-      const [isModulesLoaded, setIsModulesLoaded] = useState(false);
       const [isDataReady, setIsDataReady] = useState(false);
       const [isLocating, setIsLocating] = useState(false); 
       const [isSavingSettings, setIsSavingSettings] = useState(false); 
@@ -171,33 +173,6 @@
       const [newAcademicYear, setNewAcademicYear] = useState({
         startYear: new Date().getFullYear(), endYear: new Date().getFullYear() + 1, semester: 'Ganjil', curriculum: 'Kurikulum Merdeka', headmaster: ''
       });
-
-      // 🛠️ DYNAMIC LOADER INTERCEPTOR SYSTEM
-      useEffect(() => {
-        const loadModulesSequentially = async () => {
-          try {
-            for (const mod of subModules) {
-              const res = await fetch(`./js/${mod}.js?v=${Date.now()}`);
-              if (!res.ok) throw new Error(`Gagal mendownload file js/${mod}.js`);
-              let rawCode = await res.text();
-              
-              // Konversi paksa deklarasi 'const ViewName =' menjadi 'window.ViewName =' agar menembus batasan scope Babel
-              const cleanCode = rawCode.replace(/const\s+([A-Za-z0-9_]+)\s*=\s*\(/g, 'window.$1 = (');
-              
-              // Transpile kode JSX via Babel Standalone di dalam scope global window
-              const compiled = Babel.transform(cleanCode, { presets: ['react', 'env'] }).code;
-              const scriptScript = document.createElement('script');
-              scriptScript.text = compiled;
-              document.body.appendChild(scriptScript);
-            }
-            setIsModulesLoaded(true);
-          } catch (err) {
-            console.error(err);
-            Swal.fire("Gagal Memuat Komponen", "Terjadi kesalahan sinkronisasi arsitektur file. Silakan refresh halaman.", "error");
-          }
-        };
-        loadModulesSequentially();
-      }, []);
 
       const ensureAllClientsHaveRecord = async (targetDateStr, currentUserId) => {
         const clients = usersDb.filter(u => u.role === 'client');
@@ -353,62 +328,72 @@
       };
 
       useEffect(() => {
-        if (!isModulesLoaded) return; // Tunggu loader file selesai menyuntikkan komponen
-
-        const initData = async () => {
-          try {
-            await window.fs.signInAnonymously(window.auth);
-            const usersSnap = await window.fs.getDocs(window.fs.collection(window.db, "users"));
-            
-            if (usersSnap.empty) {
-               setIsSystemEmpty(true);
-               setSettingsDb(prev => ({ ...prev, namaInstansi: "Setup Sistem Baru" }));
-            } else {
-               setIsSystemEmpty(false);
-               let savedUserStr = null;
-               try { savedUserStr = localStorage.getItem('presensi_user'); } catch(e) {}
-
-               if (savedUserStr) {
-                  const parsed = JSON.parse(savedUserStr);
-                  const uList = await loadAllSystemData();
-                  const validUser = uList.find(user => user.username.toLowerCase() === parsed.username.toLowerCase());
-                  
-                  if(validUser){
-                      setUser(validUser);
-                      setIsDataReady(true);
-                  } else {
-                      try { localStorage.removeItem('presensi_user'); } catch(e) {}
-                  }
-               } else {
-                  const setSnap = await window.fs.getDocs(window.fs.collection(window.db, "settings"));
-                  let s = {};
-                  setSnap.forEach(d => { if(d.id === 'config') s = d.data(); });
-                  setSettingsDb(prev => ({ ...prev, namaInstansi: s.namaInstansi || "Perangkat Guru" }));
-               }
-            }
-            
-            const splashDOM = document.getElementById('app-splash-screen');
-            if (splashDOM) {
-              splashDOM.classList.add('splash-fade-out');
-              setTimeout(() => splashDOM.remove(), 600); 
-            }
-            setIsLoading(false);
-          } catch (error) {
-            console.error(error);
-            Swal.fire({ icon: 'error', title: 'Koneksi Gagal', text: 'Gagal sinkronisasi data cloud.', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
-            setIsLoading(false);
+        // Berikan delay kecil untuk memastikan skrip eksternal di-transpile oleh Babel dan di-mount ke window global
+        setTimeout(() => {
+          if (typeof window.DashboardAdminView === 'undefined') {
+            // Pasangkan fallback penyelemat scope jika onload meleset di beberapa versi browser
+            if (typeof KalenderAcademicView !== 'undefined') window.CalendarComponent = KalenderAcademicView;
+            if (typeof DashboardGuruView !== 'undefined') window.DashboardGuruView = DashboardGuruView;
+            if (typeof RiwayatGuruView !== 'undefined') window.RiwayatGuruView = RiwayatGuruView;
+            if (typeof DashboardAdminView !== 'undefined') window.DashboardAdminView = DashboardAdminView;
+            if (typeof TahunPelajaranView !== 'undefined') window.TahunPelajaranView = TahunPelajaranView;
+            if (typeof DataGuruView !== 'undefined') window.DataGuruView = DataGuruView;
+            if (typeof DataMuridView !== 'undefined') window.DataMuridView = DataMuridView;
+            if (typeof DataRombelView !== 'undefined') window.DataRombelView = DataRombelView;
+            if (typeof LaporanPresensiView !== 'undefined') window.LaporanPresensiView = LaporanPresensiView;
+            if (typeof ProfilSchoolView !== 'undefined') window.ProfilSekolahView = ProfilSchoolView;
           }
-        };
+          
+          const initData = async () => {
+            try {
+              await window.fs.signInAnonymously(window.auth);
+              const usersSnap = await window.fs.getDocs(window.fs.collection(window.db, "users"));
+              
+              if (usersSnap.empty) {
+                 setIsSystemEmpty(true);
+                 setSettingsDb(prev => ({ ...prev, namaInstansi: "Setup Sistem Baru" }));
+              } else {
+                 setIsSystemEmpty(false);
+                 let savedUserStr = null;
+                 try { savedUserStr = localStorage.getItem('presensi_user'); } catch(e) {}
 
-        const checkFirebase = () => {
+                 if (savedUserStr) {
+                    const parsed = JSON.parse(savedUserStr);
+                    const uList = await loadAllSystemData();
+                    const validUser = uList.find(user => user.username.toLowerCase() === parsed.username.toLowerCase());
+                    
+                    if(validUser){
+                        setUser(validUser);
+                        setIsDataReady(true);
+                    } else {
+                        try { localStorage.removeItem('presensi_user'); } catch(e) {}
+                    }
+                 } else {
+                    const setSnap = await window.fs.getDocs(window.fs.collection(window.db, "settings"));
+                    let s = {};
+                    setSnap.forEach(d => { if(d.id === 'config') s = d.data(); });
+                    setSettingsDb(prev => ({ ...prev, namaInstansi: s.namaInstansi || "Perangkat Guru" }));
+                 }
+              }
+              
+              const splashDOM = document.getElementById('app-splash-screen');
+              if (splashDOM) {
+                splashDOM.classList.add('splash-fade-out');
+                setTimeout(() => splashDOM.remove(), 600); 
+              }
+            } catch (error) {
+              console.error(error);
+              Swal.fire({ icon: 'error', title: 'Koneksi Gagal', text: 'Gagal sinkronisasi data cloud.' });
+            }
+          };
+
           if (window.db && window.fs && window.auth) initData();
           else window.addEventListener('firebase-ready', initData, {once: true});
-        };
-        checkFirebase();
-
-        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-        return () => clearInterval(timer);
-      }, [isModulesLoaded]);
+          
+          const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+          return () => clearInterval(timer);
+        }, 800);
+      }, []);
 
       const changeMenu = (menuName) => {
         setActiveMenu(menuName);
@@ -674,8 +659,6 @@
         if (!selectedRombel || !selectedRombel.studentIds) return [];
         return studentsDb.filter(s => selectedRombel.studentIds.includes(s.id));
       }, [studentsDb, selectedRombel]);
-
-      if (!isModulesLoaded || isLoading) return null;
 
       if (isSystemEmpty) return (
         <div className="h-screen flex items-center justify-center p-4 bg-slate-100">
