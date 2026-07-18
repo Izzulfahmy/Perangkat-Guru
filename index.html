@@ -17,7 +17,6 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-  <!-- Library SheetJS untuk Ekspor & Impor Excel (XLSX) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   
   <style>
@@ -407,7 +406,7 @@
       });
 
       const [usersDb, setUsersDb] = useState([]);
-      const [studentsDb, setStudentsDb] = useState([]); // State khusus menampung data murid
+      const [studentsDb, setStudentsDb] = useState([]); 
       const [attendanceDb, setAttendanceDb] = useState([]);
       const [holidaysDb, setHolidaysDb] = useState([]); 
       const [verificationsDb, setVerificationsDb] = useState([]); 
@@ -419,7 +418,7 @@
       });
       const [currentTime, setCurrentTime] = useState(new Date());
       const [newUser, setNewUser] = useState({ name: '', username: '', nim: '' });
-      const [newStudent, setNewStudent] = useState({ name: '', birthDate: '' }); // Form data murid baru
+      const [newStudent, setNewStudent] = useState({ name: '', birthDate: '', studentClass: '' }); 
 
       const loadAllSystemData = async () => {
         const [usersSnap, attSnap, holSnap, verSnap, setSnap, studSnap] = await Promise.all([
@@ -428,7 +427,7 @@
           window.fs.getDocs(window.fs.collection(window.db, "holidays")),
           window.fs.getDocs(window.fs.collection(window.db, "verifications")),
           window.fs.getDocs(window.fs.collection(window.db, "settings")),
-          window.fs.getDocs(window.fs.collection(window.db, "students")) // Load tabel murid
+          window.fs.getDocs(window.fs.collection(window.db, "students")) 
         ]);
 
         let u = usersSnap.docs.map(d => d.data());
@@ -1109,7 +1108,6 @@
         });
       };
 
-      // CRUD GURU (Dulu Client)
       const handleAddUser = async (e) => {
         e.preventDefault();
         if(!newUser.name || !newUser.username) return;
@@ -1180,15 +1178,14 @@
         });
       };
 
-      // CRUD MURID FUNCTIONS
       const handleAddStudent = async (e) => {
         e.preventDefault();
-        if(!newStudent.name || !newStudent.birthDate) return;
-        const added = { id: Date.now(), name: newStudent.name.trim(), birthDate: newStudent.birthDate };
+        if(!newStudent.name || !newStudent.birthDate || !newStudent.studentClass) return;
+        const added = { id: Date.now(), name: newStudent.name.trim(), birthDate: newStudent.birthDate, studentClass: newStudent.studentClass.trim() };
         
         await window.fs.setDoc(window.fs.doc(window.db, "students", added.id.toString()), added);
         setStudentsDb(prev => [...prev, added]);
-        setNewStudent({ name: '', birthDate: '' });
+        setNewStudent({ name: '', birthDate: '', studentClass: '' });
         Swal.fire({ icon: 'success', title: 'Tersimpan', text: 'Data murid berhasil ditambahkan.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
       };
 
@@ -1205,6 +1202,10 @@
                 <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Tanggal Lahir</label>
                 <input type="date" id="swal-st-b" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" value="${studObj.birthDate}">
               </div>
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Kelas</label>
+                <input type="text" id="swal-st-c" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" value="${studObj.studentClass || ''}">
+              </div>
             </div>
           `,
           showCancelButton: true, confirmButtonText: 'Update Data', cancelButtonText: 'Batal', buttonsStyling: false,
@@ -1213,7 +1214,8 @@
             return {
               ...studObj,
               name: document.getElementById('swal-st-n').value,
-              birthDate: document.getElementById('swal-st-b').value
+              birthDate: document.getElementById('swal-st-b').value,
+              studentClass: document.getElementById('swal-st-c').value
             }
           }
         }).then(async (result) => {
@@ -1238,17 +1240,15 @@
         });
       };
 
-      // EXCEL TEMPLATE Murid Download
       const downloadExcelTemplate = () => {
-        const header = [["Nama Murid", "Tanggal Lahir (YYYY-MM-DD)"]];
-        const sampleData = [["Ahmad Fauzi", "2015-08-12"], ["Siti Aminah", "2016-02-24"]];
+        const header = [["Nama Murid", "Tanggal Lahir (YYYY-MM-DD)", "Kelas"]];
+        const sampleData = [["Ahmad Fauzi", "2015-08-12", "4-A"], ["Siti Aminah", "2016-02-24", "4-B"]];
         const ws = XLSX.utils.aoa_to_sheet([...header, ...sampleData]);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Format Murid");
         XLSX.writeFile(wb, "Format_Import_Murid.xlsx");
       };
 
-      // EXCEL UPLOAD Impor Data Murid
       const uploadExcelData = (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -1276,12 +1276,14 @@
               const row = data[index];
               const nameKey = row["Nama Murid"] || row["nama"] || row["Nama"];
               const dateKey = row["Tanggal Lahir (YYYY-MM-DD)"] || row["tanggal lahir"] || row["Tanggal Lahir"];
+              const classKey = row["Kelas"] || row["kelas"] || row["CLASS"] || "-";
               
               if (nameKey) {
                 const added = {
                   id: Date.now() + index + Math.floor(Math.random() * 100),
                   name: String(nameKey).trim(),
-                  birthDate: dateKey ? String(dateKey).trim() : "-"
+                  birthDate: dateKey ? String(dateKey).trim() : "-",
+                  studentClass: String(classKey).trim()
                 };
                 await window.fs.setDoc(window.fs.doc(window.db, "students", added.id.toString()), added);
                 importedStudents.push(added);
@@ -1289,7 +1291,7 @@
             }
 
             setStudentsDb(prev => [...prev, ...importedStudents]);
-            e.target.value = ""; // Clear file input
+            e.target.value = ""; 
             Swal.fire({ icon: 'success', title: 'Berhasil Impor', text: `${importedStudents.length} murid telah dimasukkan otomatis ke database.`, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
           } catch (err) {
             console.error(err);
@@ -1297,73 +1299,6 @@
           }
         };
         reader.readAsBinaryString(file);
-      };
-
-      const handleEditAttendance = (record) => {
-        Swal.fire({
-          title: '<h2 class="text-xl font-bold text-slate-800">Update Presensi</h2>',
-          html: `
-            <div class="text-left mt-2 space-y-3">
-              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Status Kehadiran</label>
-                <select id="swal-s" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm">
-                  <option value="Hadir" ${record.status === 'Hadir' ? 'selected' : ''}>Hadir</option>
-                  <option value="Terlambat" ${record.status === 'Terlambat' ? 'selected' : ''}>Terlambat</option>
-                  <option value="Izin" ${record.status === 'Izin' ? 'selected' : ''}>Izin</option>
-                  <option value="Sakit" ${record.status === 'Sakit' ? 'selected' : ''}>Sakit</option>
-                  <option value="Alpa" ${record.status === 'Alpa' ? 'selected' : ''}>Alpa</option>
-                  <option value="Menunggu" ${record.status === 'Menunggu' ? 'selected' : ''}>Menunggu (Kosong)</option>
-                </select>
-              </div>
-              <div class="flex gap-3">
-                <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 w-1/2">
-                  <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Jam Masuk</label>
-                  <input type="time" id="swal-in" class="w-full bg-transparent outline-none font-bold text-slate-700 text-sm" value="${formatTimeForInput(record.timeIn)}">
-                </div>
-                <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 w-1/2">
-                  <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Jam Pulang</label>
-                  <input type="time" id="swal-out" class="w-full bg-transparent outline-none font-bold text-slate-700 text-sm" value="${formatTimeForInput(record.timeOut)}">
-                </div>
-              </div>
-            </div>
-          `,
-          showCancelButton: true, confirmButtonText: 'Update Data', cancelButtonText: 'Batal', buttonsStyling: false,
-          customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-md', confirmButton: 'w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all mb-2 mt-4', cancelButton: 'w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 px-4 rounded-xl transition-all', actions: 'flex flex-col w-full p-0' },
-          preConfirm: () => { return { ...record, status: document.getElementById('swal-s').value, timeIn: document.getElementById('swal-in').value, timeOut: document.getElementById('swal-out').value } }
-        }).then(async (result) => {
-          if (result.isConfirmed) {
-            await window.fs.setDoc(window.fs.doc(window.db, "attendance", result.value.id.toString()), result.value);
-            setAttendanceDb(prev => prev.map(a => a.id === record.id ? result.value : a));
-            Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Riwayat presensi diperbarui.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
-          }
-        });
-      };
-
-      const handleDeleteAttendance = (id) => {
-        Swal.fire({
-          title: 'Hapus Presensi?', text: "Data tidak dapat dikembalikan!", icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#94a3b8', confirmButtonText: 'Ya, Hapus!', cancelButtonText: 'Batal', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }
-        }).then(async (result) => {
-          if (result.isConfirmed) {
-            await window.fs.deleteDoc(window.fs.doc(window.db, "attendance", id.toString()));
-            setAttendanceDb(prev => prev.filter(a => a.id !== id));
-            Swal.fire({ icon: 'success', title: 'Terhapus!', text: 'Riwayat presensi dihapus.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
-          }
-        });
-      };
-
-      const ensureAllClientsHaveRecord = async (todayStr, skipUserId) => {
-          const clients = usersDb.filter(u => u.role === 'client');
-          let additions = [];
-          for (const client of clients) {
-              if (client.id === skipUserId) continue;
-              const hasRec = attendanceDb.some(a => a.userId === client.id && a.date === todayStr) || additions.some(a => a.userId === client.id);
-              if (!hasRec) {
-                  const pRec = { id: Date.now() + client.id, userId: client.id, date: todayStr, timeIn: '-', timeOut: '-', status: 'Menunggu' };
-                  additions.push(pRec);
-                  window.fs.setDoc(window.fs.doc(window.db, "attendance", pRec.id.toString()), pRec).catch(e => console.error(e));
-              }
-          }
-          return additions;
       };
 
       const todayStr = getLocalYYYYMMDD(currentTime);
@@ -1483,7 +1418,7 @@
           <div className="bg-white p-8 md:p-10 rounded-3xl shadow-xl w-full max-w-sm border border-slate-100 relative z-10">
             <div className="text-center mb-8">
               <div className="bg-blue-600 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 rotate-3 shadow-blue-200 shadow-xl">
-                <i className="fas fa-fingerprint text-white text-4xl -rotate-3"></i>
+                <i className="fas fa-chalkboard-user text-white text-4xl -rotate-3"></i>
               </div>
               <h1 className="text-2xl font-bold text-slate-800 tracking-tight leading-tight">{settingsDb.namaInstansi || 'Memuat...'}</h1>
               <p className="text-slate-400 mt-1 font-semibold uppercase tracking-widest text-[10px]">Perangkat Guru</p>
@@ -1504,7 +1439,7 @@
           <nav className="lg:hidden w-full bg-slate-900 text-white p-3 shadow-xl z-30 shrink-0">
             <div className="flex items-center justify-between mb-3 px-2 border-b border-slate-800 pb-3">
                <div className="flex items-center space-x-2.5">
-                 <div className="bg-blue-600 p-2 rounded-lg shadow-inner shadow-blue-400/20"><i className="fas fa-fingerprint text-xs text-white"></i></div>
+                 <div className="bg-blue-600 p-2 rounded-lg shadow-inner shadow-blue-400/20"><i className="fas fa-chalkboard-user text-xs text-white"></i></div>
                  <h2 className="text-sm font-black tracking-tight uppercase">Perangkat Guru</h2>
                </div>
                
@@ -1558,7 +1493,7 @@
 
           <aside className="hidden lg:flex w-64 bg-slate-900 text-white flex-col shadow-xl z-20 transition-all shrink-0">
             <div className="p-6 border-b border-slate-800/80 flex items-center space-x-3">
-              <div className="bg-blue-500 p-2 rounded-lg"><i className="fas fa-fingerprint text-white text-lg"></i></div>
+              <div className="bg-blue-500 p-2 rounded-lg"><i className="fas fa-chalkboard-user text-white text-lg"></i></div>
               <h2 className="text-xl font-bold tracking-tight">Perangkat Guru</h2>
             </div>
             
@@ -1577,7 +1512,7 @@
                 <button onClick={() => changeMenu('data murid')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'data murid' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-user-graduate w-5 text-center"></i><span className="font-semibold text-sm">Data Murid</span></button>
                 <button onClick={() => changeMenu('laporan')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'laporan' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-file-invoice w-5 text-center"></i><span className="font-semibold text-sm">Laporan Presensi</span></button>
                 <button onClick={() => changeMenu('kalender')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'kalender' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-calendar-alt w-5 text-center"></i><span className="font-semibold text-sm">Kalender</span></button>
-                <button onClick={() => changeMenu('profil')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'profil' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-building w-5 text-center"></i><span className="font-semibold text-sm">Profil Sekolah</span></button>
+                <button onClick={() => changeMenu('profil')} className={`w-full flex items-center justify-center space-x-2 bg-slate-800 hover:bg-blue-600 text-slate-300 p-3 rounded-xl font-semibold text-sm transition-all`}><i className="fas fa-building w-5 text-center"></i><span className="font-semibold text-sm">Profil Sekolah</span></button>
               </>}
             </nav>
             
@@ -1630,7 +1565,7 @@
                       </div>
                     )}
                     <div className="absolute -top-16 -right-16 w-48 h-48 bg-blue-50 rounded-full mix-blend-multiply filter blur-3xl opacity-50 group-hover:scale-110 transition-transform duration-700 pointer-events-none"></div>
-                    <div className="bg-blue-600 w-20 h-20 rounded-full flex items-center justify-center mb-6 shadow-lg shadow-blue-200/50 relative z-10 text-white"><i className="fas fa-fingerprint text-4xl"></i></div>
+                    <div className="bg-blue-600 w-20 h-20 rounded-full flex items-center justify-center mb-6 shadow-lg shadow-blue-200/50 relative z-10 text-white"><i className="fas fa-chalkboard-user text-4xl"></i></div>
                     <h2 className="text-2xl font-bold text-slate-800 mb-4 relative z-10">Presensi Perangkat Guru</h2>
                     <div className="flex flex-col items-center space-y-2.5 mb-8 relative z-10">
                       <div className="text-slate-700 font-bold text-sm sm:text-base flex items-center bg-white px-4 py-1.5 rounded-full border border-slate-200 shadow-sm"><i className="fas fa-user-circle mr-2 text-blue-500 text-lg"></i>{user.name}</div>
@@ -1853,7 +1788,7 @@
           {activeMenu === 'data guru' && user.role === 'admin' && (
             <div className="space-y-6">
               <div className="bg-white p-4 sm:p-8 rounded-2xl shadow-sm border border-slate-200">
-                <h3 className="text-lg font-bold text-slate-800 mb-5 flex items-center"><i className="fas fa-user-plus mr-2 text-blue-600 bg-blue-50 p-1.5 rounded"></i> Pendaftaran Guru Baru</h3>
+                <h3 className="text-lg font-bold text-slate-800 mb-5 flex items-center"><i className="fas fa-chalkboard-teacher mr-2 text-blue-600 bg-blue-50 p-1.5 rounded"></i> Pendaftaran Guru Baru</h3>
                 <form onSubmit={handleAddUser} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                   <div>
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Nama Lengkap</label>
@@ -1879,7 +1814,7 @@
                          <th className="px-4 py-3 font-bold">Nama Lengkap</th>
                          <th className="px-4 py-3 font-bold">Username</th>
                          <th className="px-4 py-3 font-bold">NIP/NIM</th>
-                         <th className="px-4 py-3 font-bold text-right">Manajemen</th>
+                         <th className="px-4 py-3 font-bold text-right">Alat</th>
                        </tr>
                      </thead>
                      <tbody className="divide-y divide-slate-50">
@@ -1904,18 +1839,15 @@
             </div>
           )}
 
-          {/* MENU DATA MURID (BARU) */}
           {activeMenu === 'data murid' && user.role === 'admin' && (
             <div className="space-y-6">
               <div className="bg-white p-4 sm:p-8 rounded-2xl shadow-sm border border-slate-200">
                 <div className="flex justify-between items-center mb-5 flex-wrap gap-2">
                   <h3 className="text-lg font-bold text-slate-800 flex items-center"><i className="fas fa-user-plus mr-2 text-purple-600 bg-purple-50 p-1.5 rounded"></i> Pendaftaran Murid Baru</h3>
                   <div className="flex items-center space-x-2">
-                    {/* Tombol Simbol Download Template Excel */}
                     <button type="button" onClick={downloadExcelTemplate} className="w-10 h-10 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl flex items-center justify-center text-slate-600 shadow-sm transition-all" title="Unduh Format Excel Murid">
                       <i className="fas fa-file-download text-base"></i>
                     </button>
-                    {/* Tombol Simbol Upload & Kustom File Selector */}
                     <label className="w-10 h-10 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl flex items-center justify-center text-emerald-600 shadow-sm cursor-pointer transition-all" title="Unggah Excel Murid">
                       <i className="fas fa-file-upload text-base"></i>
                       <input type="file" accept=".xlsx, .xls" onChange={uploadExcelData} className="hidden" />
@@ -1923,7 +1855,7 @@
                   </div>
                 </div>
                 
-                <form onSubmit={handleAddStudent} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <form onSubmit={handleAddStudent} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                   <div>
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Nama Lengkap Murid</label>
                     <input type="text" required value={newStudent.name} onChange={e=>setNewStudent({...newStudent, name: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:bg-white focus:ring-2 focus:ring-purple-500 outline-none transition-all" placeholder="Cth: Muhammad Rafli"/>
@@ -1931,6 +1863,10 @@
                   <div>
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Tanggal Lahir</label>
                     <input type="date" required value={newStudent.birthDate} onChange={e=>setNewStudent({...newStudent, birthDate: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:bg-white focus:ring-2 focus:ring-purple-500 outline-none transition-all"/>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Kelas</label>
+                    <input type="text" required value={newStudent.studentClass} onChange={e=>setNewStudent({...newStudent, studentClass: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:bg-white focus:ring-2 focus:ring-purple-500 outline-none transition-all" placeholder="Cth: IV-A"/>
                   </div>
                   <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-xl shadow-md shadow-purple-200 transition-all active:scale-95 h-[42px] text-sm">Tambah Murid</button>
                 </form>
@@ -1942,21 +1878,21 @@
                   <table className="w-full text-left border-collapse min-w-[500px]">
                      <thead>
                        <tr className="text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-100">
-                         <th className="px-4 py-3 font-bold">ID Sistem</th>
                          <th className="px-4 py-3 font-bold">Nama Lengkap Murid</th>
                          <th className="px-4 py-3 font-bold">Tanggal Lahir</th>
-                         <th className="px-4 py-3 font-bold text-right">Manajemen</th>
+                         <th className="px-4 py-3 font-bold">Kelas</th>
+                         <th className="px-4 py-3 font-bold text-right">Alat</th>
                        </tr>
                      </thead>
                      <tbody className="divide-y divide-slate-50">
                        {studentsDb.map(s => (
                          <tr key={s.id} className="hover:bg-slate-50/80 transition-colors group">
-                           <td className="px-4 py-3 font-mono text-xs text-slate-500">{s.id}</td>
                            <td className="px-4 py-3 text-slate-800 font-semibold flex items-center space-x-3">
                              <div className="w-7 h-7 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-bold text-xs">{String(s.name || 'M').charAt(0).toUpperCase()}</div>
                              <span className="text-sm">{s.name}</span>
                            </td>
                            <td className="px-4 py-3 text-slate-600 text-sm font-medium">{s.birthDate || '-'}</td>
+                           <td className="px-4 py-3 text-slate-700 text-sm font-bold">{s.studentClass || '-'}</td>
                            <td className="px-4 py-3 text-right whitespace-nowrap space-x-2">
                              <button onClick={() => handleEditStudent(s)} className="w-7 h-7 bg-blue-50 text-blue-500 hover:bg-blue-500 hover:text-white rounded-md transition-colors opacity-50 group-hover:opacity-100" title="Edit Murid"><i className="fas fa-edit text-xs"></i></button>
                              <button onClick={() => handleDeleteStudent(s.id)} className="w-7 h-7 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-md transition-colors opacity-50 group-hover:opacity-100" title="Hapus Murid"><i className="fas fa-trash-alt text-xs"></i></button>
@@ -1996,7 +1932,7 @@
                        <th className="px-4 py-3 font-bold">Jam Masuk</th>
                        <th className="px-4 py-3 font-bold">Jam Pulang</th>
                        <th className="px-4 py-3 font-bold">Status Kehadiran</th>
-                       <th className="px-4 py-3 font-bold text-right">Aksi</th>
+                       <th className="px-4 py-3 font-bold text-right">Alat</th>
                      </tr>
                    </thead>
                    <tbody className="divide-y divide-slate-50">
