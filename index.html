@@ -6,7 +6,7 @@
   <title>Perangkat Guru</title>
   
   <link rel="icon" type="image/png" href="./asset/LOGO%20UNIVERSITAS%20JEMBER%20.png" />
-  <link <link rel="shortcut icon" type="image/png" href="./asset/LOGO%20UNIVERSITAS%20JEMBER%20.png" />
+  <link rel="shortcut icon" type="image/png" href="./asset/LOGO%20UNIVERSITAS%20JEMBER%20.png" />
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
@@ -45,7 +45,7 @@
     }
   </style>
 
-  <!-- PONDASI UTAMA: FIREBASE DAN UTILS HARUS SELALU SIAP DI TOP-LEVEL SEBELUM VIEW RENDER -->
+  <!-- PONDASI UTAMA: FIREBASE DAN UTILS DI TOP-LEVEL SINKRON -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
     import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
@@ -70,7 +70,7 @@
       signInAnonymously, signOut 
     };
 
-    // EKSPOS UTILS GLOBAL AGAR SINKRON DAN BISA DIBACA LANGSUNG OLEH SEMUA SUB-FILE .JS
+    // EKSPOS UTILS GLOBAL AGAR SINKRON BISA DIBACA LANGSUNG OLEH SUB-FILE .JS VIEWS
     window.calculateDistance = function(lat1, lon1, lat2, lon2) {
       const R = 6371e3;
       const radLat1 = lat1 * Math.PI/180;
@@ -350,6 +350,10 @@
       useEffect(() => {
         const initData = async () => {
           try {
+            // 1. SINKRONISASI AUTENTIKASI DI BARIS PERTAMA AGAR REQUEST.AUTH BERISI TOKEN VALID
+            await window.fs.signInAnonymously(window.auth);
+            
+            // 2. SETELAH LOGIN SUKSES, BARU BOLEH AMBIL DATA
             const usersSnap = await window.fs.getDocs(window.fs.collection(window.db, "users"));
             
             if (usersSnap.empty) {
@@ -387,13 +391,18 @@
             setIsLoading(false);
           } catch (error) {
             console.error(error);
-            Swal.fire('Koneksi Gagal', 'Gagal memuat database.');
+            Swal.fire({
+              icon: 'error',
+              title: 'Koneksi Gagal',
+              text: 'Gagal memuat database. Periksa aturan Rules di Firebase Console Anda.',
+              customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }
+            });
             setIsLoading(false);
           }
         };
 
         const checkFirebase = () => {
-          if (window.db && window.fs) initData();
+          if (window.db && window.fs && window.auth) initData();
           else window.addEventListener('firebase-ready', initData, {once: true});
         };
         checkFirebase();
@@ -619,210 +628,6 @@
             Swal.fire({ icon: 'success', title: 'Terhapus!', text: 'Data Tahun Pelajaran berhasil dihapus.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
           }
         });
-      };
-
-      const handleLogout = () => {
-        Swal.fire({
-          title: 'Keluar Sistem?',
-          icon: 'question',
-          showCancelButton: true,
-          confirmButtonColor: '#ef4444',
-          cancelButtonColor: '#94a3b8',
-          confirmButtonText: 'Ya, Keluar',
-          cancelButtonText: 'Batal',
-          customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }
-        }).then((result) => {
-          if (result.isConfirmed) {
-            setUser(null);
-            setIsDataReady(false);
-            try {
-              localStorage.removeItem('presensi_user'); 
-              localStorage.removeItem('presensi_menu'); 
-            } catch(e) {}
-          }
-        });
-      };
-
-      const handleAddUser = async (e) => {
-        e.preventDefault();
-        if(!newUser.name || !newUser.username) return;
-        const added = { ...newUser, id: Date.now(), role: 'client' };
-        
-        await window.fs.setDoc(window.fs.doc(window.db, "users", added.id.toString()), added);
-        setUsersDb(prev => [...prev, added]);
-        setNewUser({ name: '', username: '', nim: '' });
-        Swal.fire({ icon: 'success', title: 'Tersimpan', text: 'Data guru berhasil ditambahkan.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
-      };
-
-      const handleEditUser = (clientObj) => {
-        Swal.fire({
-          title: '<h2 class="text-xl font-bold text-slate-800">Update Data Guru</h2>',
-          html: `
-            <div class="text-left mt-2 space-y-3">
-              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Nama Lengkap</label>
-                <input type="text" id="swal-n" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" value="${clientObj.name}">
-              </div>
-              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Username Login</label>
-                <input type="text" id="swal-u" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" value="${clientObj.username}">
-              </div>
-              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">NIP/NIM</label>
-                <input type="text" id="swal-nim" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" value="${clientObj.nim || ''}">
-              </div>
-            </div>
-          `,
-          showCancelButton: true,
-          confirmButtonText: 'Update Data',
-          cancelButtonText: 'Batal',
-          buttonsStyling: false,
-          customClass: { 
-            popup: 'swal2-minimalist-popup w-[90%] max-w-sm',
-            confirmButton: 'w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all mb-2 mt-4',
-            cancelButton: 'w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 px-4 rounded-xl transition-all',
-            actions: 'flex flex-col w-full p-0'
-          },
-          preConfirm: () => {
-            return {
-              ...clientObj,
-              name: document.getElementById('swal-n').value,
-              username: document.getElementById('swal-u').value,
-              nim: document.getElementById('swal-nim').value
-            }
-          }
-        }).then(async (result) => {
-          if (result.isConfirmed) {
-            await window.fs.setDoc(window.fs.doc(window.db, "users", result.value.id.toString()), result.value);
-            setUsersDb(prev => prev.map(u => u.id === clientObj.id ? result.value : u));
-            Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Data guru diperbarui.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
-          }
-        });
-      };
-
-      const handleDeleteUser = (id) => {
-        Swal.fire({
-          title: 'Hapus Guru?', text: "Data guru tidak dapat dikembalikan!", icon: 'warning',
-          showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#94a3b8', confirmButtonText: 'Ya, Hapus!', cancelButtonText: 'Batal', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }
-        }).then(async (result) => {
-          if (result.isConfirmed) {
-            await window.fs.deleteDoc(window.fs.doc(window.db, "users", id.toString()));
-            setUsersDb(prev => prev.filter(u => u.id !== id));
-            Swal.fire({ icon: 'success', title: 'Terhapus!', text: 'Data guru telah dihapus.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
-          }
-        });
-      };
-
-      const handleAddStudentModal = () => {
-        Swal.fire({
-          title: '<h2 class="text-xl font-bold text-slate-800">Tambah Murid Baru</h2>',
-          html: `
-            <div class="text-left mt-2 space-y-3">
-              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Nama Lengkap Murid</label>
-                <input type="text" id="swal-add-st-n" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" placeholder="Masukkan nama murid">
-              </div>
-              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Tanggal Lahir</label>
-                <input type="date" id="swal-add-st-b" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm">
-              </div>
-              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Kelas (Opsional)</label>
-                <input type="text" id="swal-add-st-c" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" placeholder="Cth: IV-A">
-              </div>
-            </div>
-          `,
-          showCancelButton: true, confirmButtonText: 'Simpan Data', cancelButtonText: 'Batal', buttonsStyling: false,
-          customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm', confirmButton: 'w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-xl transition-all mb-2 mt-4', cancelButton: 'w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 px-4 rounded-xl transition-all', actions: 'flex flex-col w-full p-0' },
-          preConfirm: () => {
-            const name = document.getElementById('swal-add-st-n').value.trim();
-            const birthDate = document.getElementById('swal-add-st-b').value;
-            const studentClass = document.getElementById('swal-add-st-c').value.trim() || "-"; 
-            if (!name || !birthDate) {
-              Swal.showValidationMessage('Nama dan Tanggal Lahir wajib diisi!');
-              return false;
-            }
-            return { name, birthDate, studentClass };
-          }
-        }).then(async (result) => {
-          if (result.isConfirmed) {
-            const added = { id: Date.now(), ...result.value };
-            await window.fs.setDoc(window.fs.doc(window.db, "students", added.id.toString()), added);
-            setStudentsDb(prev => [...prev, added]);
-            Swal.fire({ icon: 'success', title: 'Tersimpan', text: 'Data murid berhasil ditambahkan.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
-          }
-        });
-      };
-
-      const handleEditStudent = (studObj) => {
-        Swal.fire({
-          title: '<h2 class="text-xl font-bold text-slate-800">Update Data Murid</h2>',
-          html: `
-            <div class="text-left mt-2 space-y-3">
-              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Nama Lengkap Murid</label>
-                <input type="text" id="swal-st-n" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" value="${studObj.name}">
-              </div>
-              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Tanggal Lahir</label>
-                <input type="date" id="swal-st-b" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" value="${studObj.birthDate}">
-              </div>
-              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Kelas (Opsional)</label>
-                <input type="text" id="swal-st-c" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" value="${studObj.studentClass === '-' ? '' : studObj.studentClass}">
-              </div>
-            </div>
-          `,
-          showCancelButton: true, confirmButtonText: 'Update Data', cancelButtonText: 'Batal', buttonsStyling: false,
-          customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm', confirmButton: 'w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all mb-2 mt-4', cancelButton: 'w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 px-4 rounded-xl transition-all', actions: 'flex flex-col w-full p-0' },
-          preConfirm: () => {
-            return {
-              ...studObj,
-              name: document.getElementById('swal-st-n').value,
-              birthDate: document.getElementById('swal-st-b').value,
-              studentClass: document.getElementById('swal-st-c').value.trim() || "-"
-            }
-          }
-        }).then(async (result) => {
-          if (result.isConfirmed) {
-            await window.fs.setDoc(window.fs.doc(window.db, "students", result.value.id.toString()), result.value);
-            setStudentsDb(prev => prev.map(s => s.id === studObj.id ? result.value : s));
-            Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Data murid diperbarui.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
-          }
-        });
-      };
-
-      const handleDeleteStudent = (id) => {
-        Swal.fire({
-          title: 'Hapus Murid?', text: "Data murid tidak dapat dikembalikan!", icon: 'warning',
-          showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#94a3b8', confirmButtonText: 'Ya, Hapus!', cancelButtonText: 'Batal', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }
-        }).then(async (result) => {
-          if (result.isConfirmed) {
-            await window.fs.deleteDoc(window.fs.doc(window.db, "students", id.toString()));
-            setStudentsDb(prev => prev.filter(s => s.id !== id));
-            Swal.fire({ icon: 'success', title: 'Terhapus!', text: 'Data murid telah dihapus.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
-          }
-        });
-      };
-
-      const handleAddStudentToRombel = async (studentId) => {
-        if (!selectedRombel) return;
-        const updatedIds = [...(selectedRombel.studentIds || []), studentId];
-        const updatedRombel = { ...selectedRombel, studentIds: updatedIds };
-        
-        await window.fs.setDoc(window.fs.doc(window.db, "rombels", selectedRombel.id.toString()), updatedRombel);
-        setRombelsDb(prev => prev.map(r => r.id === selectedRombel.id ? updatedRombel : r));
-        setSelectedRombel(updatedRombel);
-      };
-
-      const handleRemoveStudentFromRombel = async (studentId) => {
-        if (!selectedRombel) return;
-        const updatedIds = (selectedRombel.studentIds || []).filter(id => id !== studentId);
-        const updatedRombel = { ...selectedRombel, studentIds: updatedIds };
-
-        await window.fs.setDoc(window.fs.doc(window.db, "rombels", selectedRombel.id.toString()), updatedRombel);
-        setRombelsDb(prev => prev.map(r => r.id === selectedRombel.id ? updatedRombel : r));
-        setSelectedRombel(updatedRombel);
       };
 
       const todayStr = window.getLocalYYYYMMDD(currentTime);
