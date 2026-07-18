@@ -64,7 +64,7 @@
   <!-- MOUNT ROOT POINT -->
   <div id="root" class="min-h-screen w-full"></div>
 
-<!-- LOAD KODE ASIN KRONIS DARI SUB FILE MODUL .JS -->
+  <!-- LOAD KODE ASINKRONIS DARI SUB FILE MODUL .JS MENGGUNAKAN ATRIBUT ES MODULES -->
   <script type="text/babel" data-type="module" src="./js/firebase-config.js"></script>
   <script type="text/babel" data-type="module" src="./js/helpers.js"></script>
   <script type="text/babel" data-type="module" src="./js/kalender-akademik.js"></script>
@@ -79,7 +79,7 @@
   <script type="text/babel" data-type="module" src="./js/profil-sekolah.js"></script>
 
   <!-- LOGIKA APP ORCHESTRATOR UTAMA -->
-  <script type="text/babel" data-presets="react,env">
+  <script type="text/babel" data-presets="react,env" data-type="module">
     const { useState, useEffect, useMemo } = React;
 
     function App() {
@@ -155,48 +155,6 @@
           }
         }
         return createdPlaceholders;
-      };
-
-      const handleGenerateVerif = async () => {
-        Swal.fire({
-          html: '<div class="flex flex-col items-center py-2"><div class="w-10 h-10 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin mb-4"></div><p class="text-slate-600 font-bold text-sm">Membuat Tautan Verifikasi Resmi...</p></div>',
-          allowOutsideClick: false, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-xs' }
-        });
-
-        try {
-          const [yearStr, monthStr] = filterMonth.split('-');
-          const vid = `${yearStr}${monthStr}-${Date.now().toString(16).substring(4).toUpperCase()}`;
-          
-          let baseUrl = settingsDb.appScriptUrl || (window.location.origin + window.location.pathname);
-          if (baseUrl.endsWith('index.html')) {
-            baseUrl = baseUrl.replace('index.html', '');
-          }
-          if (!baseUrl.endsWith('/')) baseUrl += '/';
-          
-          const verificationUrl = `${baseUrl}verification.html?vid=${vid}`;
-          
-          const newVerif = {
-            id: Date.now(),
-            month: filterMonth,
-            vid: vid,
-            url: verificationUrl
-          };
-
-          await window.fs.setDoc(window.fs.doc(window.db, "verifications", newVerif.id.toString()), newVerif);
-          setVerificationsDb(prev => [...prev, newVerif]);
-          
-          Swal.fire({
-            icon: 'success',
-            title: 'Berhasil!',
-            text: 'Tautan verifikasi bulan ini telah berhasil dibuat.',
-            timer: 1500,
-            showConfirmButton: false,
-            customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }
-          });
-        } catch (error) {
-          console.error(error);
-          Swal.fire('Error', 'Gagal membuat tautan verifikasi resmi.', 'error');
-        }
       };
 
       const handleEditAttendance = (record) => {
