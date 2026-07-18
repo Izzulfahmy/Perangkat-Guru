@@ -366,7 +366,7 @@
 
             <div className="mt-6 flex flex-wrap gap-4 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-t border-slate-100 pt-4 justify-center">
               <div className="flex items-center space-x-1.5"><div className="w-3 h-3 bg-red-500 rounded-full"></div><span>Libur Nasional</span></div>
-              <div className="flex items-center space-x-1.5"><div className="w-3 h-3 bg-red-50 border border-red-200 rounded"></div><span>Libur</span></div>
+              <div className="flex items-center space-x-1.5"><div className="w-3 h-3 bg-red-5 border border-red-200 rounded"></div><span>Libur</span></div>
               <div className="flex items-center space-x-1.5"><div className="w-3 h-3 bg-blue-600 rounded-full"></div><span>Hari Ini</span></div>
             </div>
           </div>
@@ -408,6 +408,7 @@
       const [usersDb, setUsersDb] = useState([]);
       const [studentsDb, setStudentsDb] = useState([]); 
       const [rombelsDb, setRombelsDb] = useState([]); 
+      const [academicYearsDb, setAcademicYearsDb] = useState([]); 
       const [selectedRombel, setSelectedRombel] = useState(null);
 
       const [attendanceDb, setAttendanceDb] = useState([]);
@@ -421,7 +422,17 @@
       });
       const [currentTime, setCurrentTime] = useState(new Date());
       const [newUser, setNewUser] = useState({ name: '', username: '', nim: '' });
+      
+      const [newAcademicYear, setNewAcademicYear] = useState({
+        startYear: new Date().getFullYear(),
+        endYear: new Date().getFullYear() + 1,
+        semester: 'Ganjil',
+        curriculum: 'Kurikulum Merdeka',
+        headmaster: ''
+      });
 
+      // --- ATURAN HOISTING: MIDDLEWARE & HANDLER DILETAKKAN DI ATAS SEBELUM USEMEMO ---
+      
       const ensureAllClientsHaveRecord = async (targetDateStr, currentUserId) => {
         const clients = usersDb.filter(u => u.role === 'client');
         let createdPlaceholders = [];
@@ -440,15 +451,116 @@
         return createdPlaceholders;
       };
 
+      const handleGenerateVerif = async () => {
+        Swal.fire({
+          html: '<div class="flex flex-col items-center py-2"><div class="w-10 h-10 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin mb-4"></div><p class="text-slate-600 font-bold text-sm">Membuat Tautan Verifikasi Resmi...</p></div>',
+          allowOutsideClick: false, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-xs' }
+        });
+
+        try {
+          const [yearStr, monthStr] = filterMonth.split('-');
+          const vid = `${yearStr}${monthStr}-${Date.now().toString(16).substring(4).toUpperCase()}`;
+          
+          let baseUrl = settingsDb.appScriptUrl || (window.location.origin + window.location.pathname);
+          if (baseUrl.endsWith('index.html')) {
+            baseUrl = baseUrl.replace('index.html', '');
+          }
+          if (!baseUrl.endsWith('/')) baseUrl += '/';
+          
+          const verificationUrl = `${baseUrl}verification.html?vid=${vid}`;
+          
+          const newVerif = {
+            id: Date.now(),
+            month: filterMonth,
+            vid: vid,
+            url: verificationUrl
+          };
+
+          await window.fs.setDoc(window.fs.doc(window.db, "verifications", newVerif.id.toString()), newVerif);
+          setVerificationsDb(prev => [...prev, newVerif]);
+          
+          Swal.fire({
+            icon: 'success',
+            title: 'Berhasil!',
+            text: 'Tautan verifikasi bulan ini telah berhasil dibuat.',
+            timer: 1500,
+            showConfirmButton: false,
+            customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }
+          });
+        } catch (error) {
+          console.error(error);
+          Swal.fire('Error', 'Gagal membuat tautan verifikasi resmi.', 'error');
+        }
+      };
+
+      const handleEditAttendance = (record) => {
+        const u = usersDb.find(user => user.id === record.userId);
+        Swal.fire({
+          title: `<h2 class="text-xl font-bold text-slate-800">Edit Presensi</h2><p class="text-xs text-slate-400 font-medium">${u ? u.name : 'Guru'}</p>`,
+          html: `
+            <div class="text-left mt-2 space-y-3">
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Status Kehadiran</label>
+                <select id="swal-att-status" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm">
+                  <option value="Hadir" ${record.status === 'Hadir' ? 'selected' : ''}>Hadir</option>
+                  <option value="Terlambat" ${record.status === 'Terlambat' ? 'selected' : ''}>Terlambat</option>
+                  <option value="Izin" ${record.status === 'Izin' ? 'selected' : ''}>Izin</option>
+                  <option value="Sakit" ${record.status === 'Sakit' ? 'selected' : ''}>Sakit</option>
+                  <option value="Alpa" ${record.status === 'Alpa' ? 'selected' : ''}>Alpa</option>
+                </select>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Jam Masuk</label>
+                <input type="time" id="swal-att-in" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" value="${formatTimeForInput(record.timeIn)}">
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Jam Pulang</label>
+                <input type="time" id="swal-att-out" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" value="${formatTimeForInput(record.timeOut)}">
+              </div>
+            </div>
+          `,
+          showCancelButton: true, confirmButtonText: 'Simpan Perubahan', cancelButtonText: 'Batal', buttonsStyling: false,
+          customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm', confirmButton: 'w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all mb-2 mt-4', cancelButton: 'w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 px-4 rounded-xl transition-all', actions: 'flex flex-col w-full p-0' },
+          preConfirm: () => {
+            return {
+              status: document.getElementById('swal-att-status').value,
+              timeIn: document.getElementById('swal-att-in').value || '-',
+              timeOut: document.getElementById('swal-att-out').value || '-'
+            }
+          }
+        }).then(async (result) => {
+          if (result.isConfirmed) {
+            const updated = { ...record, ...result.value };
+            await window.fs.setDoc(window.fs.doc(window.db, "attendance", record.id.toString()), updated);
+            setAttendanceDb(prev => prev.map(a => a.id === record.id ? updated : a));
+            Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Data presensi diperbarui.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+          }
+        });
+      };
+
+      const handleDeleteAttendance = (id) => {
+        Swal.fire({
+          title: 'Hapus Rekam Presensi?', text: "Data rekap ini akan hilang permanen!", icon: 'warning',
+          showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#94a3b8', confirmButtonText: 'Ya, Hapus!', cancelButtonText: 'Batal', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }
+        }).then(async (result) => {
+          if (result.isConfirmed) {
+            await window.fs.deleteDoc(window.fs.doc(window.db, "attendance", id.toString()));
+            setAttendanceDb(prev => prev.filter(a => a.id !== id));
+            Swal.fire({ icon: 'success', title: 'Terhapus!', text: 'Rekam presensi telah dihapus.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+          }
+        });
+      };
+
       const loadAllSystemData = async () => {
-        const [usersSnap, attSnap, holSnap, verSnap, setSnap, studSnap, rombSnap] = await Promise.all([
+        const [usersSnap, attSnap, holSnap, verSnap, setSnap, studSnap, rombSnap, academicSnap] = await Promise.all([
           window.fs.getDocs(window.fs.collection(window.db, "users")),
           window.fs.getDocs(window.fs.collection(window.db, "attendance")),
           window.fs.getDocs(window.fs.collection(window.db, "holidays")),
           window.fs.getDocs(window.fs.collection(window.db, "verifications")),
           window.fs.getDocs(window.fs.collection(window.db, "settings")),
           window.fs.getDocs(window.fs.collection(window.db, "students")),
-          window.fs.getDocs(window.fs.collection(window.db, "rombels")) 
+          window.fs.getDocs(window.fs.collection(window.db, "rombels")),
+          window.fs.getDocs(window.fs.collection(window.db, "academic_years"))
         ]);
 
         let u = usersSnap.docs.map(d => d.data());
@@ -457,6 +569,7 @@
         let v = verSnap.docs.map(d => d.data());
         let st = studSnap.docs.map(d => d.data());
         let rb = rombSnap.docs.map(d => d.data());
+        let ay = academicSnap.docs.map(d => d.data());
         
         let s = {};
         setSnap.forEach(d => { if(d.id === 'config') s = d.data(); });
@@ -505,6 +618,11 @@
             return record;
         });
 
+        const teachersList = u.filter(user => user.role === 'client');
+        if (teachersList.length > 0 && !newAcademicYear.headmaster) {
+          setNewAcademicYear(prev => ({ ...prev, headmaster: teachersList[0].name }));
+        }
+
         setSettingsDb(finalSettings);
         setUsersDb(u);
         setStudentsDb(st);
@@ -512,6 +630,7 @@
         setHolidaysDb(h);
         setVerificationsDb(v);
         setAttendanceDb(processedAtt);
+        setAcademicYearsDb(ay);
         return u;
       };
 
@@ -827,104 +946,63 @@
         });
       };
 
-      const handleEditAttendance = (record) => {
-        const u = usersDb.find(user => user.id === record.userId);
-        Swal.fire({
-          title: `<h2 class="text-xl font-bold text-slate-800">Edit Presensi</h2><p class="text-xs text-slate-400 font-medium">${u ? u.name : 'Guru'}</p>`,
-          html: `
-            <div class="text-left mt-2 space-y-3">
-              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Status Kehadiran</label>
-                <select id="swal-att-status" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm">
-                  <option value="Hadir" ${record.status === 'Hadir' ? 'selected' : ''}>Hadir</option>
-                  <option value="Terlambat" ${record.status === 'Terlambat' ? 'selected' : ''}>Terlambat</option>
-                  <option value="Izin" ${record.status === 'Izin' ? 'selected' : ''}>Izin</option>
-                  <option value="Sakit" ${record.status === 'Sakit' ? 'selected' : ''}>Sakit</option>
-                  <option value="Alpa" ${record.status === 'Alpa' ? 'selected' : ''}>Alpa</option>
-                </select>
-              </div>
-              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Jam Masuk</label>
-                <input type="time" id="swal-att-in" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" value="${formatTimeForInput(record.timeIn)}">
-              </div>
-              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Jam Pulang</label>
-                <input type="time" id="swal-att-out" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" value="${formatTimeForInput(record.timeOut)}">
-              </div>
-            </div>
-          `,
-          showCancelButton: true, confirmButtonText: 'Simpan Perubahan', cancelButtonText: 'Batal', buttonsStyling: false,
-          customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm', confirmButton: 'w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all mb-2 mt-4', cancelButton: 'w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 px-4 rounded-xl transition-all', actions: 'flex flex-col w-full p-0' },
-          preConfirm: () => {
-            return {
-              status: document.getElementById('swal-att-status').value,
-              timeIn: document.getElementById('swal-att-in').value || '-',
-              timeOut: document.getElementById('swal-att-out').value || '-'
-            }
-          }
-        }).then(async (result) => {
-          if (result.isConfirmed) {
-            const updated = { ...record, ...result.value };
-            await window.fs.setDoc(window.fs.doc(window.db, "attendance", record.id.toString()), updated);
-            setAttendanceDb(prev => prev.map(a => a.id === record.id ? updated : a));
-            Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Data presensi diperbarui.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
-          }
-        });
+      const handleAddAcademicYear = async (e) => {
+        e.preventDefault();
+        const yearTitle = `${newAcademicYear.startYear}/${newAcademicYear.endYear}`;
+        const addedId = Date.now();
+        
+        const addedData = {
+          id: addedId,
+          year: yearTitle,
+          semester: newAcademicYear.semester,
+          curriculum: newAcademicYear.curriculum,
+          headmaster: newAcademicYear.headmaster || (usersDb.filter(u=>u.role==='client')[0]?.name || '-'),
+          isActive: false
+        };
+
+        try {
+          await window.fs.setDoc(window.fs.doc(window.db, "academic_years", addedId.toString()), addedData);
+          setAcademicYearsDb(prev => [...prev, addedData]);
+          Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Tahun Pelajaran baru berhasil ditambahkan.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+        } catch(err) {
+          console.error(err);
+          Swal.fire('Error', 'Gagal menyimpan data tahun pelajaran.', 'error');
+        }
       };
 
-      const handleDeleteAttendance = (id) => {
+      const handleSetAcademicYearActive = async (id) => {
         Swal.fire({
-          title: 'Hapus Rekam Presensi?', text: "Data rekap ini akan hilang permanen!", icon: 'warning',
-          showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#94a3b8', confirmButtonText: 'Ya, Hapus!', cancelButtonText: 'Batal', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }
-        }).then(async (result) => {
-          if (result.isConfirmed) {
-            await window.fs.deleteDoc(window.fs.doc(window.db, "attendance", id.toString()));
-            setAttendanceDb(prev => prev.filter(a => a.id !== id));
-            Swal.fire({ icon: 'success', title: 'Terhapus!', text: 'Rekam presensi telah dihapus.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
-          }
-        });
-      };
-
-      const handleGenerateVerif = async () => {
-        Swal.fire({
-          html: '<div class="flex flex-col items-center py-2"><div class="w-10 h-10 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin mb-4"></div><p class="text-slate-600 font-bold text-sm">Membuat Tautan Verifikasi Resmi...</p></div>',
+          html: '<div class="flex flex-col items-center py-2"><div class="w-10 h-10 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin mb-4"></div><p class="text-slate-600 font-bold text-sm">Menetapkan Periode Aktif...</p></div>',
           allowOutsideClick: false, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-xs' }
         });
 
         try {
-          const [yearStr, monthStr] = filterMonth.split('-');
-          const vid = `${yearStr}${monthStr}-${Date.now().toString(16).substring(4).toUpperCase()}`;
-          
-          let baseUrl = settingsDb.appScriptUrl || (window.location.origin + window.location.pathname);
-          if (baseUrl.endsWith('index.html')) {
-            baseUrl = baseUrl.replace('index.html', '');
-          }
-          if (!baseUrl.endsWith('/')) baseUrl += '/';
-          
-          const verificationUrl = `${baseUrl}verification.html?vid=${vid}`;
-          
-          const newVerif = {
-            id: Date.now(),
-            month: filterMonth,
-            vid: vid,
-            url: verificationUrl
-          };
+          const updatedList = await Promise.all(academicYearsDb.map(async (ay) => {
+            const isTarget = ay.id === id;
+            const itemUpdate = { ...ay, isActive: isTarget };
+            await window.fs.setDoc(window.fs.doc(window.db, "academic_years", ay.id.toString()), itemUpdate);
+            return itemUpdate;
+          }));
 
-          await window.fs.setDoc(window.fs.doc(window.db, "verifications", newVerif.id.toString()), newVerif);
-          setVerificationsDb(prev => [...prev, newVerif]);
-          
-          Swal.fire({
-            icon: 'success',
-            title: 'Berhasil!',
-            text: 'Tautan verifikasi bulan ini telah berhasil dibuat.',
-            timer: 1500,
-            showConfirmButton: false,
-            customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }
-          });
-        } catch (error) {
-          console.error(error);
-          Swal.fire('Error', 'Gagal membuat tautan verifikasi resmi.', 'error');
+          setAcademicYearsDb(updatedList);
+          Swal.fire({ icon: 'success', title: 'Periode Diperbarui', text: 'Tahun Pelajaran aktif berhasil diubah.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+        } catch(e) {
+          console.error(e);
+          Swal.fire('Error', 'Gagal mengubah status aktif.', 'error');
         }
+      };
+
+      const handleDeleteAcademicYear = (id) => {
+        Swal.fire({
+          title: 'Hapus Tahun Pelajaran?', text: "Data rekap ini akan hilang!", icon: 'warning',
+          showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#94a3b8', confirmButtonText: 'Ya, Hapus!', cancelButtonText: 'Batal', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }
+        }).then(async (result) => {
+          if (result.isConfirmed) {
+            await window.fs.deleteDoc(window.fs.doc(window.db, "academic_years", id.toString()));
+            setAcademicYearsDb(prev => prev.filter(ay => ay.id !== id));
+            Swal.fire({ icon: 'success', title: 'Terhapus!', text: 'Data Tahun Pelajaran berhasil dihapus.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+          }
+        });
       };
 
       const handleDownloadPDF = async () => {
@@ -1664,7 +1742,7 @@
                  </button>
                </div>
             </div>
-            <div className={`grid gap-1 ${user.role === 'admin' ? 'grid-cols-6' : 'grid-cols-3'}`}>
+            <div className={`grid gap-1 ${user.role === 'admin' ? 'grid-cols-7' : 'grid-cols-3'}`}>
               <button onClick={() => changeMenu('dashboard')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='dashboard'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
                 <i className="fas fa-home text-base mb-1"></i><span className="text-[9px] font-bold uppercase">Beranda</span>
               </button>
@@ -1680,6 +1758,9 @@
               )}
               {user.role === 'admin' && (
                 <>
+                  <button onClick={() => changeMenu('tahun pelajaran')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='tahun pelajaran'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
+                    <i className="fas fa-graduation-cap text-base mb-1"></i><span className="text-[9px] font-bold uppercase">Tapel</span>
+                  </button>
                   <button onClick={() => changeMenu('data guru')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='data guru'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
                     <i className="fas fa-chalkboard-teacher text-base mb-1"></i><span className="text-[9px] font-bold uppercase">Guru</span>
                   </button>
@@ -1691,9 +1772,6 @@
                   </button>
                   <button onClick={() => changeMenu('laporan')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='laporan'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
                     <i className="fas fa-file-invoice text-base mb-1"></i><span className="text-[9px] font-bold uppercase">Laporan</span>
-                  </button>
-                  <button onClick={() => changeMenu('kalender')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='kalender'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
-                    <i className="fas fa-calendar-alt text-base mb-1"></i><span className="text-[9px] font-bold uppercase">Kalender</span>
                   </button>
                   <button onClick={() => changeMenu('profil')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='profil'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
                     <i className="fas fa-building text-base mb-1"></i><span className="text-[9px] font-bold uppercase">Profil</span>
@@ -1720,6 +1798,7 @@
               )}
               
               {user.role === 'admin' && <>
+                <button onClick={() => changeMenu('tahun pelajaran')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'tahun pelajaran' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-graduation-cap w-5 text-center"></i><span className="font-semibold text-sm">Tahun Pelajaran</span></button>
                 <button onClick={() => changeMenu('data guru')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'data guru' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-chalkboard-teacher w-5 text-center"></i><span className="font-semibold text-sm">Data Guru</span></button>
                 <button onClick={() => changeMenu('data murid')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'data murid' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-user-graduate w-5 text-center"></i><span className="font-semibold text-sm">Data Murid</span></button>
                 <button onClick={() => changeMenu('rombel')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'rombel' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-cubes w-5 text-center"></i><span className="font-semibold text-sm">Data Rombel</span></button>
@@ -1867,6 +1946,93 @@
                       </table>
                     </div>
                   </div>
+              )}
+
+              {activeMenu === 'tahun pelajaran' && user.role === 'admin' && (
+                <div className="space-y-6 animate-fadeIn">
+                  <div className="bg-white p-4 sm:p-8 rounded-2xl shadow-sm border border-slate-200">
+                    <h3 className="text-lg font-bold text-slate-800 mb-5 flex items-center"><i className="fas fa-graduation-cap mr-2 text-blue-600 bg-blue-50 p-1.5 rounded"></i> Buat Periode Tahun Pelajaran</h3>
+                    <form onSubmit={handleAddAcademicYear} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Tahun Awal</label>
+                        <input type="number" required value={newAcademicYear.startYear} onChange={e=>setNewAcademicYear({...newAcademicYear, startYear: parseInt(e.target.value), endYear: parseInt(e.target.value) + 1})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"/>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Tahun Akhir</label>
+                        <input type="number" required value={newAcademicYear.endYear} readOnly className="w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-400 outline-none transition-all cursor-not-allowed"/>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Periode Semester</label>
+                        <select value={newAcademicYear.semester} onChange={e=>setNewAcademicYear({...newAcademicYear, semester: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                          <option value="Ganjil">Ganjil</option>
+                          <option value="Genap">Genap</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Nama Kurikulum</label>
+                        <input type="text" required value={newAcademicYear.curriculum} onChange={e=>setNewAcademicYear({...newAcademicYear, curriculum: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="Cth: Kurikulum Merdeka"/>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Kepala Sekolah (Dari Guru)</label>
+                        <select value={newAcademicYear.headmaster} onChange={e=>setNewAcademicYear({...newAcademicYear, headmaster: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                          {usersDb.filter(u => u.role === 'client').map(teacher => (
+                            <option key={teacher.id} value={teacher.name}>{teacher.name}</option>
+                          ))}
+                          {usersDb.filter(u => u.role === 'client').length === 0 && <option value="">Daftarkan Guru Terlebih Dahulu</option>}
+                        </select>
+                      </div>
+                      <div className="md:col-span-5 flex justify-end pt-2">
+                        <button type="submit" className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-xl shadow-md shadow-blue-200 transition-all active:scale-95 text-sm">
+                          <i className="fas fa-plus mr-2"></i> Tambah Tahun Pelajaran
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                      <h3 className="text-base font-bold text-slate-800">Daftar Konfigurasi Tahun Pelajaran</h3>
+                      <span className="text-xs font-semibold text-slate-400 italic">*Hanya satu periode yang dapat ditetapkan aktif</span>
+                    </div>
+                    <div className="overflow-x-auto p-2">
+                      <table className="w-full text-left border-collapse min-w-[600px]">
+                        <thead>
+                          <tr className="text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-100">
+                            <th className="px-4 py-3 font-bold">Tahun Pelajaran</th>
+                            <th className="px-4 py-3 font-bold">Semester</th>
+                            <th className="px-4 py-3 font-bold">Kurikulum</th>
+                            <th className="px-4 py-3 font-bold">Kepala Sekolah</th>
+                            <th className="px-4 py-3 font-bold text-center">Status</th>
+                            <th className="px-4 py-3 font-bold text-right">Alat</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                          {academicYearsDb.map(ay => (
+                            <tr key={ay.id} className="hover:bg-slate-50/80 transition-colors group">
+                              <td className="px-4 py-3 text-slate-800 font-bold tracking-wide">{ay.year}</td>
+                              <td className="px-4 py-3 text-slate-600 font-semibold">{ay.semester}</td>
+                              <td className="px-4 py-3 text-slate-700 font-medium">{ay.curriculum}</td>
+                              <td className="px-4 py-3 text-slate-600 font-medium">{ay.headmaster}</td>
+                              <td className="px-4 py-3 text-center">
+                                {ay.isActive ? (
+                                  <span className="bg-green-100 text-green-700 px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border border-green-200">Aktif</span>
+                                ) : (
+                                  <button onClick={() => handleSetAcademicYearActive(ay.id)} className="bg-slate-100 hover:bg-blue-50 text-slate-500 hover:text-blue-600 px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border border-slate-200 transition-colors">Set Aktif</button>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-right whitespace-nowrap">
+                                <button onClick={() => handleDeleteAcademicYear(ay.id)} className="w-7 h-7 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-md transition-colors opacity-50 group-hover:opacity-100" title="Hapus Tahun Pelajaran"><i className="fas fa-trash-alt text-xs"></i></button>
+                              </td>
+                            </tr>
+                          ))}
+                          {academicYearsDb.length === 0 && (
+                            <tr><td colSpan="6" className="p-10 text-center text-slate-400 font-medium italic"><i className="fas fa-folder-open text-xl mb-1.5 block opacity-40"></i>Belum ada data konfigurasi Tahun Pelajaran.</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
               )}
 
               {activeMenu === 'dashboard' && user.role === 'admin' && (
@@ -2106,11 +2272,9 @@
                 </div>
               )}
 
-              {/* MENU DATA ROMBEL - DIPERBAIKI MENJADI SELALU KIRI & KANAN SEJAK RESOLUSI LAPTOP (lg:) */}
               {activeMenu === 'rombel' && user.role === 'admin' && (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                   
-                  {/* SISI KIRI: TABEL DAFTAR ROMBEL (lg:col-span-5) */}
                   <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden lg:col-span-5">
                     <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                       <h3 className="text-base font-bold text-slate-800 flex items-center"><i className="fas fa-cubes mr-2 text-indigo-600 bg-indigo-50 p-1.5 rounded"></i> Daftar Rombel</h3>
@@ -2152,22 +2316,19 @@
                     </div>
                   </div>
 
-                  {/* SISI KANAN: PENGATURAN ANGGOTA KELAS (lg:col-span-7) */}
                   <div className="lg:col-span-7">
                     {selectedRombel ? (
                       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden animate-fadeIn">
                         <div className="p-4 sm:p-6 border-b border-slate-100 bg-indigo-900 text-white flex justify-between items-center">
                           <div>
                             <h3 className="text-base font-bold flex items-center gap-2"><i className="fas fa-users-cog"></i> Pengaturan Anggota Kelas</h3>
-                            <p className="text-xs text-indigo-200 mt-0.5 font-medium">Rombel Hack: <b className="text-white font-bold">{selectedRombel.name} ({selectedRombel.level})</b> | Wali: {selectedRombel.homeroomTeacher}</p>
+                            <p className="text-xs text-indigo-200 mt-0.5 font-medium">Rombel Aktif: <b className="text-white font-bold">{selectedRombel.name} ({selectedRombel.level})</b> | Wali: {selectedRombel.homeroomTeacher}</p>
                           </div>
                           <span className="text-[10px] font-bold bg-white/20 text-white px-2.5 py-1 rounded-full uppercase">ID: {selectedRombel.id.toString().slice(-4)}</span>
                         </div>
 
-                        {/* Diubah menjadi 2 panel simetris md:grid-cols-12 tanpa kolom pemisah ikon arah panah tengah */}
                         <div className="p-4 grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
                           
-                          {/* PANEL SUB-KIRI (md:col-span-6): DAFTAR MURID BELUM ADA KELAS */}
                           <div className="md:col-span-6 bg-slate-50 rounded-xl border border-slate-200 p-3 h-[380px] flex flex-col">
                             <div className="flex items-center justify-between border-b border-slate-200 pb-2 mb-2 shrink-0">
                               <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Belum Ada Kelas ({availableStudentsForRombel.length})</span>
@@ -2193,7 +2354,6 @@
                             </div>
                           </div>
 
-                          {/* PANEL SUB-KANAN (md:col-span-6): ANGGOTA KELAS ROMBEL YANG DIPILIH */}
                           <div className="md:col-span-6 bg-indigo-50/40 rounded-xl border border-indigo-100 p-3 h-[380px] flex flex-col">
                             <div className="flex items-center justify-between border-b border-indigo-100 pb-2 mb-2 shrink-0">
                               <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Anggota Rombel ({activeRombelStudents.length})</span>
