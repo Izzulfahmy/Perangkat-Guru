@@ -916,7 +916,7 @@
               )}
 
               {activeMenu === 'dashboard' && user.role === 'admin' && (
-                <DashboardAdminView {...{usersDb, attendanceDb, studentsDb, holidaysDb, settingsDb, filterMonth, setFilterMonth, todayStr, currentTime, availableMonthsOptions, monthlyClientSummaries}} />
+                <DashboardAdminView {...{usersDb, attendanceDb, studentsDb, holidaysDb, settingsDb, filterMonth, setFilterMonth, todayStr, currentTime, availableMonthsOptions, monthlyClientSummaries, handleLogout}} />
               )}
 
               {activeMenu === 'data guru' && user.role === 'admin' && (
