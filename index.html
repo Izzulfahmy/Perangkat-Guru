@@ -6,7 +6,7 @@
   <title>Perangkat Guru</title>
   
   <link rel="icon" type="image/png" href="./asset/LOGO%20UNIVERSITAS%20JEMBER%20.png" />
-  <link rel="shortcut icon" type="image/png" href="./asset/LOGO%20UNIVERSITAS%20JEMBER%20.png" />
+  <link <link rel="shortcut icon" type="image/png" href="./asset/LOGO%20UNIVERSITAS%20JEMBER%20.png" />
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
@@ -44,6 +44,57 @@
       pointer-events: none !important;
     }
   </style>
+
+  <!-- PONDASI UTAMA: FIREBASE DAN UTILS HARUS SELALU SIAP DI TOP-LEVEL SEBELUM VIEW RENDER -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+    import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBrvRy59biZZilEgp8HIpHIUA16PcaflJU",
+      authDomain: "perangkat-guru-85e8f.firebaseapp.com",
+      projectId: "perangkat-guru-85e8f",
+      storageBucket: "perangkat-guru-85e8f.firebasestorage.app",
+      messagingSenderId: "489186826165",
+      appId: "1:489186826165:web:c7b6d6a91ec70d12f06bfc",
+      measurementId: "G-6K1DGGKEES"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    window.db = getFirestore(app);
+    window.auth = getAuth(app);
+    
+    window.fs = { 
+      collection, getDocs, setDoc, doc, deleteDoc, updateDoc,
+      signInAnonymously, signOut 
+    };
+
+    // EKSPOS UTILS GLOBAL AGAR SINKRON DAN BISA DIBACA LANGSUNG OLEH SEMUA SUB-FILE .JS
+    window.calculateDistance = function(lat1, lon1, lat2, lon2) {
+      const R = 6371e3;
+      const radLat1 = lat1 * Math.PI/180;
+      const radLat2 = lat2 * Math.PI/180;
+      const deltaLat = (lat2-lat1) * Math.PI/180;
+      const deltaLon = (lon2-lon1) * Math.PI/180;
+      const a = Math.sin(deltaLat/2) * Math.sin(deltaLat/2) + Math.cos(radLat1) * Math.cos(radLat2) * Math.sin(deltaLon/2) * Math.sin(deltaLon/2);
+      return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+    };
+
+    window.getLocalYYYYMMDD = function(dateObj) {
+      const y = dateObj.getFullYear();
+      const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const d = String(dateObj.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    };
+
+    window.formatTimeForInput = function(timeStr) {
+      if (!timeStr || timeStr === '-') return '';
+      return timeStr.replace(/\./g, ':').slice(0, 5);
+    };
+
+    window.dispatchEvent(new Event('firebase-ready'));
+  </script>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased text-sm">
 
@@ -64,9 +115,7 @@
   <!-- MOUNT ROOT POINT -->
   <div id="root" class="min-h-screen w-full"></div>
 
-  <!-- LOAD KODE ASINKRONIS DARI SUB FILE MODUL .JS MENGGUNAKAN ATRIBUT ES MODULES -->
-  <script type="text/babel" data-type="module" src="./js/firebase-config.js"></script>
-  <script type="text/babel" data-type="module" src="./js/helpers.js"></script>
+  <!-- LOAD VIEWS & COMPONENTS SECARA MODULAR -->
   <script type="text/babel" data-type="module" src="./js/kalender-akademik.js"></script>
   <script type="text/babel" data-type="module" src="./js/dashboard-guru.js"></script>
   <script type="text/babel" data-type="module" src="./js/riwayat-guru.js"></script>
@@ -175,11 +224,11 @@
               </div>
               <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
                 <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Jam Masuk</label>
-                <input type="time" id="swal-att-in" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" value="${formatTimeForInput(record.timeIn)}">
+                <input type="time" id="swal-att-in" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" value="${window.formatTimeForInput(record.timeIn)}">
               </div>
               <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
                 <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Jam Pulang</label>
-                <input type="time" id="swal-att-out" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" value="${formatTimeForInput(record.timeOut)}">
+                <input type="time" id="swal-att-out" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" value="${window.formatTimeForInput(record.timeOut)}">
               </div>
             </div>
           `,
@@ -256,7 +305,7 @@
         };
 
         const now = new Date();
-        const currentYYYYMMDD = getLocalYYYYMMDD(now);
+        const currentYYYYMMDD = window.getLocalYYYYMMDD(now);
         const currentHm = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace('.', ':');
         
         let processedAtt = a.map(record => {
@@ -301,7 +350,6 @@
       useEffect(() => {
         const initData = async () => {
           try {
-            await window.fs.signInAnonymously(window.auth);
             const usersSnap = await window.fs.getDocs(window.fs.collection(window.db, "users"));
             
             if (usersSnap.empty) {
@@ -339,7 +387,7 @@
             setIsLoading(false);
           } catch (error) {
             console.error(error);
-            Swal.fire('Koneksi Gagal', 'Gagal memuat database Firestore.', 'error');
+            Swal.fire('Koneksi Gagal', 'Gagal memuat database.');
             setIsLoading(false);
           }
         };
@@ -435,7 +483,7 @@
         let availableDates = [];
         for (let d = 1; d <= totalDays; d++) {
           const dateObj = new Date(y, mIdx, d);
-          const dateStr = getLocalYYYYMMDD(dateObj);
+          const dateStr = window.getLocalYYYYMMDD(dateObj);
           if (!existingDates.has(dateStr)) {
             availableDates.push({
               value: dateStr,
@@ -777,7 +825,7 @@
         setSelectedRombel(updatedRombel);
       };
 
-      const todayStr = getLocalYYYYMMDD(currentTime);
+      const todayStr = window.getLocalYYYYMMDD(currentTime);
       const filteredAttendanceData = attendanceDb.filter(a => a.date.startsWith(filterMonth));
       const currentVerif = verificationsDb.find(v => v.month === filterMonth);
       const hasData = filteredAttendanceData.length > 0;
@@ -826,7 +874,7 @@
 
           for (let d = 1; d <= totalDaysInMonth; d++) {
             const loopDateObj = new Date(year, monthIndex, d);
-            const dateStr = getLocalYYYYMMDD(loopDateObj);
+            const dateStr = window.getLocalYYYYMMDD(loopDateObj);
             const dayOfWeek = loopDateObj.getDay();
 
             const isLiburMinggu = String(settingsDb.liburMinggu).toLowerCase() === 'true';
