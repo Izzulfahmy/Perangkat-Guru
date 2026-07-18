@@ -409,6 +409,10 @@
       const [studentsDb, setStudentsDb] = useState([]); 
       const [rombelsDb, setRombelsDb] = useState([]); 
       const [selectedRombel, setSelectedRombel] = useState(null);
+      
+      // State Baru Manajemen Tahun Pelajaran
+      const [academicYearsDb, setAcademicYearsDb] = useState([]);
+      const [newAcademicYear, setNewAcademicYear] = useState({ yearStart: '', yearEnd: '', semester: 'Ganjil', curriculum: '', principalName: '' });
 
       const [attendanceDb, setAttendanceDb] = useState([]);
       const [holidaysDb, setHolidaysDb] = useState([]); 
@@ -441,14 +445,15 @@
       };
 
       const loadAllSystemData = async () => {
-        const [usersSnap, attSnap, holSnap, verSnap, setSnap, studSnap, rombSnap] = await Promise.all([
+        const [usersSnap, attSnap, holSnap, verSnap, setSnap, studSnap, rombSnap, acadSnap] = await Promise.all([
           window.fs.getDocs(window.fs.collection(window.db, "users")),
           window.fs.getDocs(window.fs.collection(window.db, "attendance")),
           window.fs.getDocs(window.fs.collection(window.db, "holidays")),
           window.fs.getDocs(window.fs.collection(window.db, "verifications")),
           window.fs.getDocs(window.fs.collection(window.db, "settings")),
           window.fs.getDocs(window.fs.collection(window.db, "students")),
-          window.fs.getDocs(window.fs.collection(window.db, "rombels")) 
+          window.fs.getDocs(window.fs.collection(window.db, "rombels")),
+          window.fs.getDocs(window.fs.collection(window.db, "academic_years"))
         ]);
 
         let u = usersSnap.docs.map(d => d.data());
@@ -457,6 +462,7 @@
         let v = verSnap.docs.map(d => d.data());
         let st = studSnap.docs.map(d => d.data());
         let rb = rombSnap.docs.map(d => d.data());
+        let ac = acadSnap.docs.map(d => d.data());
         
         let s = {};
         setSnap.forEach(d => { if(d.id === 'config') s = d.data(); });
@@ -512,6 +518,7 @@
         setHolidaysDb(h);
         setVerificationsDb(v);
         setAttendanceDb(processedAtt);
+        setAcademicYearsDb(ac);
         return u;
       };
 
@@ -885,283 +892,65 @@
         });
       };
 
-      const handleGenerateVerif = async () => {
+      // AKSI MANAJEMEN TAHUN PELAJARAN
+      const handleAddAcademicYear = async (e) => {
+        e.preventDefault();
+        if(!newAcademicYear.yearStart || !newAcademicYear.yearEnd || !newAcademicYear.curriculum || !newAcademicYear.principalName) {
+          return Swal.fire("Gagal", "Semua kolom tahun pelajaran wajib diisi lengkap!", "warning");
+        }
+        
+        const titleStr = `${newAcademicYear.yearStart}/${newAcademicYear.yearEnd}`;
+        const addedId = Date.now();
+        
+        // Aturan default: jika ini adalah data pertama, otomatis diset aktif.
+        const isFirst = academicYearsDb.length === 0;
+        
+        const added = {
+          id: addedId,
+          title: titleStr,
+          semester: newAcademicYear.semester,
+          curriculum: newAcademicYear.curriculum,
+          principalName: newAcademicYear.principalName,
+          isActive: isFirst ? 'true' : 'false'
+        };
+
+        await window.fs.setDoc(window.fs.doc(window.db, "academic_years", addedId.toString()), added);
+        setAcademicYearsDb(prev => [...prev, added]);
+        setNewAcademicYear({ yearStart: '', yearEnd: '', semester: 'Ganjil', curriculum: '', principalName: '' });
+        Swal.fire({ icon: 'success', title: 'Tersimpan', text: 'Tahun pelajaran sukses terdaftar.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+      };
+
+      const handleSetAcademicYearActive = async (id) => {
         Swal.fire({
-          html: '<div class="flex flex-col items-center py-2"><div class="w-10 h-10 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin mb-4"></div><p class="text-slate-600 font-bold text-sm">Membuat Tautan Verifikasi Resmi...</p></div>',
+          html: '<div class="flex flex-col items-center py-2"><div class="w-10 h-10 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin mb-4"></div><p class="text-slate-600 font-bold text-sm">Menetapkan Periode Aktif...</p></div>',
           allowOutsideClick: false, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-xs' }
         });
 
         try {
-          const [yearStr, monthStr] = filterMonth.split('-');
-          const vid = `${yearStr}${monthStr}-${Date.now().toString(16).substring(4).toUpperCase()}`;
-          
-          let baseUrl = settingsDb.appScriptUrl || (window.location.origin + window.location.pathname);
-          if (baseUrl.endsWith('index.html')) {
-            baseUrl = baseUrl.replace('index.html', '');
+          let updatedList = [];
+          for(const ac of academicYearsDb) {
+            const isTarget = ac.id === id;
+            const updatedObj = { ...ac, isActive: isTarget ? 'true' : 'false' };
+            await window.fs.setDoc(window.fs.doc(window.db, "academic_years", ac.id.toString()), updatedObj);
+            updatedList.push(updatedObj);
           }
-          if (!baseUrl.endsWith('/')) baseUrl += '/';
-          
-          const verificationUrl = `${baseUrl}verification.html?vid=${vid}`;
-          
-          const newVerif = {
-            id: Date.now(),
-            month: filterMonth,
-            vid: vid,
-            url: verificationUrl
-          };
-
-          await window.fs.setDoc(window.fs.doc(window.db, "verifications", newVerif.id.toString()), newVerif);
-          setVerificationsDb(prev => [...prev, newVerif]);
-          
-          Swal.fire({
-            icon: 'success',
-            title: 'Berhasil!',
-            text: 'Tautan verifikasi bulan ini telah berhasil dibuat.',
-            timer: 1500,
-            showConfirmButton: false,
-            customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }
-          });
-        } catch (error) {
-          console.error(error);
-          Swal.fire('Error', 'Gagal membuat tautan verifikasi resmi.', 'error');
+          setAcademicYearsDb(updatedList);
+          Swal.fire({ icon: 'success', title: 'Berhasil!', text: 'Periode aktif sistem telah diganti.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+        } catch(e) {
+          console.error(e);
+          Swal.fire("Gagal", "Terjadi galat koneksi basis data.", "error");
         }
       };
 
-      const handleDownloadPDF = async () => {
-        const defaultDate = currentTime.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-        const defaultCity = settingsDb.kotaKabupaten || '';
-
+      const handleDeleteAcademicYear = (id) => {
         Swal.fire({
-          title: '<h2 class="text-xl font-bold text-slate-800">Pengaturan Cetak</h2>',
-          html: `
-            <div class="text-left mt-4 space-y-4">
-              <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Kota Tanda Tangan</label>
-                <input type="text" id="pdfCity" class="w-full bg-transparent outline-none font-bold text-slate-700 text-sm" value="${defaultCity}" placeholder="Cth: Jember">
-              </div>
-              <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Tanggal Cetak</label>
-                <input type="text" id="pdfDate" class="w-full bg-transparent outline-none font-bold text-slate-700 text-sm" value="${defaultDate}">
-              </div>
-            </div>
-          `,
-          showCancelButton: true, confirmButtonText: 'Unduh Sekarang', cancelButtonText: 'Batal', buttonsStyling: false,
-          customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-md', confirmButton: 'w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all mb-2', cancelButton: 'w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 px-4 rounded-xl transition-all', actions: 'flex flex-col w-full px-4 pb-4' },
-          preConfirm: () => { return { city: document.getElementById('pdfCity').value, date: document.getElementById('pdfDate').value } }
-        }).then((result) => {
+          title: 'Hapus Tahun Pelajaran?', text: "Data ini tidak dapat dikembalikan!", icon: 'warning',
+          showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#94a3b8', confirmButtonText: 'Ya, Hapus!', cancelButtonText: 'Batal', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }
+        }).then(async (result) => {
           if (result.isConfirmed) {
-            Swal.fire({ html: '<div class="flex flex-col items-center py-2"><div class="w-10 h-10 border-4 border-slate-100 border-t-red-500 rounded-full animate-spin mb-4"></div><p class="text-slate-600 font-bold text-sm">Menyiapkan PDF...</p></div>', showConfirmButton: false, allowOutsideClick: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-xs' } });
-
-            setTimeout(() => {
-              try {
-                const { city, date } = result.value;
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF({ orientation: 'landscape', format: [210, 330] });
-
-                const [yearStr, monthStr] = filterMonth.split('-');
-                const year = parseInt(yearStr);
-                const monthIndex = parseInt(monthStr) - 1; 
-                const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-                const datesWithActivity = new Set(attendanceDb.map(a => a.date));
-
-                const head = [['No', 'Nama Lengkap']];
-                for (let i = 1; i <= daysInMonth; i++) head[0].push(i.toString()); 
-                head[0].push('H', 'I', 'S', 'A');
-
-                const colStyles = { 0: { halign: 'center', cellWidth: 8 }, 1: { halign: 'left' } };
-                for (let i = 1; i <= daysInMonth; i++) colStyles[i + 1] = { halign: 'center', cellWidth: 7.2 }; 
-                
-                const body = [];
-                const clients = usersDb.filter(u => u.role === 'client');
-
-                clients.forEach((client, index) => {
-                  const clientNameNim = client.name + '\n' + (client.nim || '-');
-                  const row = [index + 1, clientNameNim];
-                  let totalHadir = 0, totalIzin = 0, totalSakit = 0, totalAlpa = 0;
-
-                  for (let d = 1; d <= daysInMonth; d++) {
-                    const dayDate = new Date(year, monthIndex, d);
-                    const dateStr = getLocalYYYYMMDD(dayDate);
-                    const dayOfWeek = dayDate.getDay();
-                    const isLiburMinggu = String(settingsDb.liburMinggu).toLowerCase() === 'true';
-                    const isLiburSabtu = String(settingsDb.liburSabtu).toLowerCase() === 'true';
-                    const isRoutineHoliday = (dayOfWeek === 0 && isLiburMinggu) || (dayOfWeek === 6 && isLiburSabtu);
-                    const isSpecialHoliday = holidaysDb.find(h => h.date === dateStr);
-
-                    const record = attendanceDb.find(a => a.userId === client.id && a.date === dateStr);
-                    const hasActivityOnDate = datesWithActivity.has(dateStr); 
-
-                    if (record) {
-                      if (record.status === 'Hadir' || record.status === 'Terlambat') { row.push(record.status === 'Hadir' ? 'H' : 'T'); totalHadir++; }
-                      else if (record.status === 'Izin') { row.push('I'); totalIzin++; }
-                      else if (record.status === 'Sakit') { row.push('S'); totalSakit++; }
-                      else if (record.status === 'Alpa') { row.push('A'); totalAlpa++; }
-                      else { row.push(''); } 
-                    } else {
-                      if (isRoutineHoliday || isSpecialHoliday) row.push('L');
-                      else {
-                         if (dayDate <= new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate())) {
-                            if (hasActivityOnDate) { row.push('A'); totalAlpa++; } else row.push('');
-                         } else row.push('');
-                      }
-                    }
-                  }
-                  row.push(totalHadir.toString(), totalIzin.toString(), totalSakit.toString(), totalAlpa.toString());
-                  body.push(row);
-                });
-
-                const pageWidth = doc.internal.pageSize.getWidth();
-                const monthName = new Date(year, monthIndex).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
-                
-                let currentY = 14;
-
-                if (settingsDb.namaKegiatan && settingsDb.namaKegiatan.trim() !== '') {
-                  doc.setFontSize(14).setFont("helvetica", "bold").setTextColor(15, 23, 42); 
-                  const splitKegiatan = doc.splitTextToSize(settingsDb.namaKegiatan.toUpperCase(), 200);
-                  doc.text(splitKegiatan, 8, currentY);
-                  currentY += (splitKegiatan.length * 5); 
-                }
-
-                doc.setFontSize(14).setFont("helvetica", "bold").setTextColor(15, 23, 42); 
-                const splitInstansi = doc.splitTextToSize((settingsDb.namaInstansi || '').toUpperCase(), 200);
-                doc.text(splitInstansi, 8, currentY);
-                currentY += (splitInstansi.length * 5) + 2; 
-
-                const addressParts = [settingsDb.alamat, settingsDb.desaKecamatan, settingsDb.kotaKabupaten, settingsDb.negara, settingsDb.kodePos].filter(Boolean).join(', ');
-                if (addressParts) {
-                  doc.setFontSize(8).setFont("helvetica", "normal").setTextColor(100, 100, 100);
-                  const splitAddress = doc.splitTextToSize(addressParts, 130); 
-                  doc.text(splitAddress, 8, currentY);
-                  currentY += (splitAddress.length * 4); 
-                }
-                const rightTextX = pageWidth - 28;
-                doc.setFontSize(12).setFont("helvetica", "bold").setTextColor(15, 23, 42).text("LAPORAN REKAPITULASI PRESENSI", rightTextX, 14, { align: 'right' });
-                doc.setFontSize(9).setFont("helvetica", "normal").setTextColor(71, 85, 105).text(`Periode: ${monthName}`, rightTextX, 19, { align: 'right' });
-                
-                const currentVerifMatch = verificationsDb.find(v => v.month === filterMonth);
-                const docId = currentVerifMatch ? currentVerifMatch.vid : `${year}${monthStr}-${Date.now().toString(16).substring(4).toUpperCase()}`;
-                doc.setFontSize(8).setFont("helvetica", "bold").setTextColor(100, 100, 100).text(`ID DOKUMEN: ${docId}`, rightTextX, 23, { align: 'right' });
-
-                const lineY = Math.max(29, currentY + 3); 
-                doc.setLineWidth(0.5).setDrawColor(226, 232, 240).line(8, lineY, pageWidth - 8, lineY);
-
-                doc.autoTable({
-                  startY: lineY + 4, margin: { left: 8, right: 8 }, head: head, body: body, theme: 'grid',
-                  styles: { fontSize: 7.5, halign: 'center', valign: 'middle', cellPadding: 1.5, lineColor: [0, 0, 0], lineWidth: 0.1 },
-                  headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', lineColor: [0, 0, 0], lineWidth: 0.1 },
-                  columnStyles: colStyles,
-                  didParseCell: function(data) {
-                     const isColumnDate = data.column.index > 1 && data.column.index <= daysInMonth + 1;
-                     let isHolidayCol = false;
-                     if (isColumnDate) {
-                        const dayDate = new Date(year, monthIndex, data.column.index - 1);
-                        const dateStr = getLocalYYYYMMDD(dayDate);
-                        const dayOfWeek = dayDate.getDay();
-                        const isLiburMinggu = String(settingsDb.liburMinggu).toLowerCase() === 'true';
-                        const isLiburSabtu = String(settingsDb.liburSabtu).toLowerCase() === 'true';
-                        isHolidayCol = (dayOfWeek === 0 && isLiburMinggu) || (dayOfWeek === 6 && isLiburSabtu) || holidaysDb.find(h => h.date === dateStr);
-                     }
-                     if (data.section === 'head') {
-                       data.cell.styles.fillColor = [255, 255, 255]; 
-                       data.cell.styles.textColor = isHolidayCol ? [220, 38, 38] : [0, 0, 0];
-                     }
-                     if (data.section === 'body') {
-                       if (data.column.index === 0 || data.column.index === 1) { 
-                          data.cell.styles.textColor = [15, 23, 42]; 
-                          data.cell.styles.fontStyle = 'bold'; 
-                          data.cell.styles.fontSize = 8.5; 
-                       }
-                       if (isColumnDate) {
-                         const val = data.cell.raw;
-                         if (val === 'H') { data.cell.styles.textColor = [21, 128, 61]; data.cell.styles.fontStyle = 'bold'; }
-                         else if (val === 'T') { data.cell.styles.textColor = [234, 88, 12]; data.cell.styles.fontStyle = 'bold'; }
-                         else if (val === 'I') { data.cell.styles.textColor = [147, 51, 234]; data.cell.styles.fontStyle = 'bold'; }
-                         else if (val === 'S') { data.cell.styles.textColor = [234, 179, 8]; data.cell.styles.fontStyle = 'bold'; }
-                         else if (val === 'A') { data.cell.styles.textColor = [220, 38, 38]; data.cell.styles.fontStyle = 'bold'; }
-                         else if (val === 'L' || isHolidayCol) { data.cell.styles.textColor = [255, 255, 255]; data.cell.styles.fillColor = [220, 38, 38]; data.cell.styles.fontStyle = 'bold'; }
-                       } else if (data.column.index >= daysInMonth + 2) {
-                          if (data.column.index === daysInMonth + 2) data.cell.styles.textColor = [21, 128, 61]; 
-                          if (data.column.index === daysInMonth + 3) data.cell.styles.textColor = [147, 51, 234]; 
-                          if (data.column.index === daysInMonth + 4) data.cell.styles.textColor = [234, 179, 8]; 
-                          if (data.column.index === daysInMonth + 5) data.cell.styles.textColor = [220, 38, 38]; 
-                       }
-                     }
-                  }
-                });
-
-                const finalY = doc.lastAutoTable.finalY || 28;
-                doc.setFontSize(8).setTextColor(100, 100, 100);
-                doc.text("Keterangan: H (Hadir), T (Terlambat), I (Izin), S (Sakit), A (Alpa/Tidak Hadir), L (Libur)", 14, finalY + 6);
-
-                doc.setFontSize(10).setTextColor(0, 0, 0);
-                let signatureY = finalY + 35; 
-                
-                let pjs = [];
-                try { pjs = JSON.parse(settingsDb.penanggungJawab || "[]"); } catch(e) {}
-                if (pjs.length === 0) pjs = [{jabatan: 'Penanggung Jawab', nama: '...................................', nip: 'NIP/NIM.'}];
-
-                const nPjs = pjs.length;
-                const totalRows = Math.ceil(nPjs / 2);
-                const colLeftX = pageWidth * 0.25;
-                const colRightX = pageWidth * 0.75;
-                const colCenterX = pageWidth * 0.5;
-
-                const mengetahuiX = (nPjs === 1) ? colCenterX : colRightX;
-                const locationDateText = city ? `${city}, ${date}` : date;
-                doc.text(locationDateText, mengetahuiX, signatureY - 14, { align: "center" });
-                doc.text("Mengetahui,", mengetahuiX, signatureY - 8, { align: "center" });
-
-                pjs.forEach((pj, idx) => {
-                   let row, colX;
-                   if (nPjs % 2 !== 0) { 
-                      if (idx === 0) {
-                         row = totalRows - 1; 
-                         colX = colCenterX;   
-                      } else {
-                         let pairIndex = Math.ceil(idx / 2);
-                         row = totalRows - 1 - pairIndex;                
-                         colX = (idx % 2 === 1) ? colRightX : colLeftX; 
-                      }
-                   } else { 
-                      let pairIndex = Math.floor(idx / 2);
-                      row = totalRows - 1 - pairIndex;               
-                      colX = (idx % 2 === 0) ? colRightX : colLeftX; 
-                   }
-
-                   const currentY = signatureY + (row * 35);
-                   doc.setFont("helvetica", "normal").text(pj.jabatan || "...................................", colX, currentY, { align: "center" });
-                   doc.setFont("helvetica", "bold").text(pj.nama || "...................................", colX, currentY + 20, { align: "center" });
-                   doc.setFont("helvetica", "normal").text(pj.nip || "NIP/NIM. ", colX, currentY + 25, { align: "center" });
-                });
-
-                const savePDF = () => {
-                   doc.save("Rekap_Presensi_" + filterMonth + ".pdf");
-                   Swal.close();
-                };
-
-                if (currentVerifMatch && currentVerifMatch.url) {
-                   const qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&margin=1&data=" + encodeURIComponent(currentVerifMatch.url);
-                   const img = new Image();
-                   img.crossOrigin = "Anonymous";
-                   img.onload = function() {
-                       const canvas = document.createElement('canvas');
-                       canvas.width = img.width; canvas.height = img.height;
-                       const ctx = canvas.getContext('2d');
-                       ctx.drawImage(img, 0, 0);
-                       const dataURL = canvas.toDataURL('image/png');
-                       doc.addImage(dataURL, 'PNG', pageWidth - 26, 8, 18, 18);
-                       savePDF();
-                   };
-                   img.onerror = () => savePDF();
-                   img.src = qrUrl;
-                } else {
-                   savePDF(); 
-                }
-              } catch (error) {
-                console.error(error);
-                Swal.fire('Error', 'Gagal memproses file PDF.', 'error');
-              }
-            }, 100);
+            await window.fs.deleteDoc(window.fs.doc(window.db, "academic_years", id.toString()));
+            setAcademicYearsDb(prev => prev.filter(ac => ac.id !== id));
+            Swal.fire({ icon: 'success', title: 'Terhapus!', text: 'Data rekam berhasil dihapus.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
           }
         });
       };
@@ -1594,6 +1383,11 @@
         return studentsDb.filter(s => selectedRombel.studentIds.includes(s.id));
       }, [studentsDb, selectedRombel]);
 
+      // List Guru Pengajar untuk Dropdown Kepala Sekolah / Penanggung Jawab
+      const registeredTeachers = useMemo(() => {
+        return usersDb.filter(u => u.role === 'client');
+      }, [usersDb]);
+
       if (isSystemEmpty) return (
         <div className="h-screen flex items-center justify-center p-4 bg-slate-100 relative overflow-hidden">
           <div className="bg-white p-8 md:p-10 rounded-3xl shadow-xl w-full max-w-md border border-slate-100 relative z-10">
@@ -1664,7 +1458,7 @@
                  </button>
                </div>
             </div>
-            <div className={`grid gap-1 ${user.role === 'admin' ? 'grid-cols-6' : 'grid-cols-3'}`}>
+            <div className={`grid gap-1 ${user.role === 'admin' ? 'grid-cols-7' : 'grid-cols-3'}`}>
               <button onClick={() => changeMenu('dashboard')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='dashboard'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
                 <i className="fas fa-home text-base mb-1"></i><span className="text-[9px] font-bold uppercase">Beranda</span>
               </button>
@@ -1680,6 +1474,9 @@
               )}
               {user.role === 'admin' && (
                 <>
+                  <button onClick={() => changeMenu('tahun pelajaran')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='tahun pelajaran'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
+                    <i className="fas fa-graduation-cap text-base mb-1"></i><span className="text-[9px] font-bold uppercase">Periode</span>
+                  </button>
                   <button onClick={() => changeMenu('data guru')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='data guru'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
                     <i className="fas fa-chalkboard-teacher text-base mb-1"></i><span className="text-[9px] font-bold uppercase">Guru</span>
                   </button>
@@ -1712,6 +1509,10 @@
             <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
               <button onClick={() => changeMenu('dashboard')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'dashboard' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-home w-5 text-center"></i><span className="font-semibold text-sm">Dashboard</span></button>
               
+              {user.role === 'admin' && (
+                <button onClick={() => changeMenu('tahun pelajaran')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'tahun pelajaran' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-graduation-cap w-5 text-center"></i><span className="font-semibold text-sm">Tahun Pelajaran</span></button>
+              )}
+
               {user.role === 'client' && (
                 <>
                   <button onClick={() => changeMenu('riwayat')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'riwayat' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-history w-5 text-center"></i><span className="font-semibold text-sm">Riwayat Presensi</span></button>
@@ -1867,6 +1668,92 @@
                       </table>
                     </div>
                   </div>
+              )}
+
+              {/* MENU BARU: MANAJEMEN TAHUN PELAJARAN */}
+              {activeMenu === 'tahun pelajaran' && user.role === 'admin' && (
+                <div className="space-y-6 animate-fadeIn">
+                  <div className="bg-white p-4 sm:p-8 rounded-2xl shadow-sm border border-slate-200">
+                    <h3 className="text-lg font-bold text-slate-800 mb-5 flex items-center"><i className="fas fa-graduation-cap mr-2 text-blue-600 bg-blue-50 p-1.5 rounded"></i> Buat Periode Tahun Pelajaran</h3>
+                    <form onSubmit={handleAddAcademicYear} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Tahun Awal</label>
+                        <input type="number" required min="2020" max="2100" placeholder="Cth: 2024" value={newAcademicYear.yearStart} onChange={e=>setNewAcademicYear({...newAcademicYear, yearStart: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"/>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Tahun Akhir</label>
+                        <input type="number" required min="2020" max="2100" placeholder="Cth: 2025" value={newAcademicYear.yearEnd} onChange={e=>setNewAcademicYear({...newAcademicYear, yearEnd: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"/>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Semester</label>
+                        <select value={newAcademicYear.semester} onChange={e=>setNewAcademicYear({...newAcademicYear, semester: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                          <option value="Ganjil">Ganjil</option>
+                          <option value="Genap">Genap</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Nama Kurikulum</label>
+                        <input type="text" required placeholder="Cth: Kurikulum Merdeka" value={newAcademicYear.curriculum} onChange={e=>setNewAcademicYear({...newAcademicYear, curriculum: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"/>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Kepala Sekolah</label>
+                        <select required value={newAcademicYear.principalName} onChange={e=>setNewAcademicYear({...newAcademicYear, principalName: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                          <option value="">-- Pilih Guru --</option>
+                          {registeredTeachers.map(t => (
+                            <option key={t.id} value={t.name}>{t.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="md:col-span-5 flex justify-end mt-2">
+                        <button type="submit" className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-xl shadow-md shadow-blue-200 transition-all active:scale-95 text-sm">Simpan Tahun Pelajaran</button>
+                      </div>
+                    </form>
+                  </div>
+
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50"><h3 className="text-base font-bold text-slate-800">Daftar Tahun Pelajaran</h3></div>
+                    <div className="overflow-x-auto p-2">
+                      <table className="w-full text-left border-collapse min-w-[600px]">
+                        <thead>
+                          <tr className="text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-100">
+                            <th className="px-4 py-3 font-bold">Tahun Pelajaran</th>
+                            <th className="px-4 py-3 font-bold">Semester</th>
+                            <th className="px-4 py-3 font-bold">Kurikulum</th>
+                            <th className="px-4 py-3 font-bold">Kepala Sekolah</th>
+                            <th className="px-4 py-3 font-bold text-center">Status</th>
+                            <th className="px-4 py-3 font-bold text-right">Alat</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                          {academicYearsDb.map(ac => {
+                            const activeStatus = String(ac.isActive).toLowerCase() === 'true';
+                            return (
+                              <tr key={ac.id} className="hover:bg-slate-50/80 transition-colors group">
+                                <td className="px-4 py-3 text-slate-800 font-bold text-sm">{ac.title}</td>
+                                <td className="px-4 py-3 text-slate-600 font-medium text-sm">{ac.semester}</td>
+                                <td className="px-4 py-3 text-slate-600 font-medium text-sm">{ac.curriculum}</td>
+                                <td className="px-4 py-3 text-slate-600 font-semibold text-sm">{ac.principalName}</td>
+                                <td className="px-4 py-3 text-center">
+                                  {activeStatus ? (
+                                    <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-green-200">Aktif</span>
+                                  ) : (
+                                    <button onClick={() => handleSetAcademicYearActive(ac.id)} className="bg-slate-100 hover:bg-blue-600 text-slate-600 hover:text-white text-[10px] font-bold px-2.5 py-1 rounded-full transition-colors border border-slate-200">Set Aktif</button>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-right whitespace-nowrap">
+                                  <button onClick={() => handleDeleteAcademicYear(ac.id)} className="w-7 h-7 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-md transition-colors opacity-50 group-hover:opacity-100" title="Hapus Periode"><i className="fas fa-trash-alt text-xs"></i></button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          {academicYearsDb.length === 0 && (
+                            <tr><td colSpan="6" className="p-10 text-center text-slate-400 font-medium italic"><i className="fas fa-graduation-cap text-xl mb-1.5 block opacity-40"></i>Belum ada data tahun pelajaran terdaftar.</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
               )}
 
               {activeMenu === 'dashboard' && user.role === 'admin' && (
@@ -2106,11 +1993,9 @@
                 </div>
               )}
 
-              {/* MENU DATA ROMBEL - DIPERBAIKI MENJADI SELALU KIRI & KANAN SEJAK RESOLUSI LAPTOP (lg:) */}
               {activeMenu === 'rombel' && user.role === 'admin' && (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                   
-                  {/* SISI KIRI: TABEL DAFTAR ROMBEL (lg:col-span-5) */}
                   <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden lg:col-span-5">
                     <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                       <h3 className="text-base font-bold text-slate-800 flex items-center"><i className="fas fa-cubes mr-2 text-indigo-600 bg-indigo-50 p-1.5 rounded"></i> Daftar Rombel</h3>
@@ -2152,7 +2037,6 @@
                     </div>
                   </div>
 
-                  {/* SISI KANAN: PENGATURAN ANGGOTA KELAS (lg:col-span-7) */}
                   <div className="lg:col-span-7">
                     {selectedRombel ? (
                       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden animate-fadeIn">
@@ -2164,10 +2048,8 @@
                           <span className="text-[10px] font-bold bg-white/20 text-white px-2.5 py-1 rounded-full uppercase">ID: {selectedRombel.id.toString().slice(-4)}</span>
                         </div>
 
-                        {/* Diubah menjadi 2 panel simetris md:grid-cols-12 tanpa kolom pemisah ikon arah panah tengah */}
                         <div className="p-4 grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
                           
-                          {/* PANEL SUB-KIRI (md:col-span-6): DAFTAR MURID BELUM ADA KELAS */}
                           <div className="md:col-span-6 bg-slate-50 rounded-xl border border-slate-200 p-3 h-[380px] flex flex-col">
                             <div className="flex items-center justify-between border-b border-slate-200 pb-2 mb-2 shrink-0">
                               <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Belum Ada Kelas ({availableStudentsForRombel.length})</span>
@@ -2193,7 +2075,6 @@
                             </div>
                           </div>
 
-                          {/* PANEL SUB-KANAN (md:col-span-6): ANGGOTA KELAS ROMBEL YANG DIPILIH */}
                           <div className="md:col-span-6 bg-indigo-50/40 rounded-xl border border-indigo-100 p-3 h-[380px] flex flex-col">
                             <div className="flex items-center justify-between border-b border-indigo-100 pb-2 mb-2 shrink-0">
                               <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Anggota Rombel ({activeRombelStudents.length})</span>
