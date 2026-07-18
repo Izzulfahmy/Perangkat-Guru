@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verifikasi Laporan Presensi</title>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js" crossorigin="anonymous"></script>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  
+  <style>
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    
+    @media print {
+      body { background-color: white !important; }
+      .no-print { display: none !important; }
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      .print-border-none { border: none !important; box-shadow: none !important; padding: 0 !important; }
+    }
+  </style>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    // Mengimpor modul Auth & SignIn Anonymous
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAfkqKKgX5WqFMZ-wUI0RIjmZyahrD1uWg",
+      authDomain: "sistem-presensi-96dae.firebaseapp.com",
+      projectId: "sistem-presensi-96dae",
+      storageBucket: "sistem-presensi-96dae.firebasestorage.app",
+      messagingSenderId: "444659307342",
+      appId: "1:444659307342:web:b1f8b7833f76a43ec8c41f",
+      measurementId: "G-XDXXMENG8X"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    window.db = getFirestore(app);
+    window.auth = getAuth(app);
+    
+    window.fs = { 
+      collection, 
+      getDocs,
+      signInAnonymously // Didaftarkan ke window agar bisa diakses di React
+    };
+    window.dispatchEvent(new Event('firebase-ready'));
+  </script>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans antialiased selection:bg-blue-200">
+  
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    let targetMonthParam = urlParams.get('month') || "";
+    const vidParam = urlParams.get('vid');
+    
+    if (!targetMonthParam && vidParam && vidParam.length >= 6) {
+       targetMonthParam = vidParam.substring(0, 4) + '-' + vidParam.substring(4, 6);
+    }
+    window.TARGET_MONTH = targetMonthParam;
+    window.VID_PARAM = vidParam || "-";
+  </script>
+
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="react,env">
+    const { useState, useEffect } = React;
+
+    function getLocalYYYYMMDD(dateObj) {
+      const y = dateObj.getFullYear();
+      const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const d = String(dateObj.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function VerificationApp() {
+      const [isLoading, setIsLoading] = useState(true);
+      const [settingsDb, setSettingsDb] = useState({});
+      const [usersDb, setUsersDb] = useState([]);
+      const [attendanceDb, setAttendanceDb] = useState([]);
+      const [holidaysDb, setHolidaysDb] = useState([]);
+      
+      const targetValid = window.TARGET_MONTH && window.TARGET_MONTH.length > 0 && window.TARGET_MONTH.includes('-');
+      const [yearStr, monthStr] = targetValid 
+        ? window.TARGET_MONTH.split('-') 
+        : [new Date().getFullYear().toString(), String(new Date().getMonth() + 1).padStart(2, '0')];
+        
+      const year = parseInt(yearStr);
+      const monthIndex = parseInt(monthStr) - 1; 
+      const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+
+      useEffect(() => {
+        const initData = async () => {
+          try {
+            // 1. Lakukan Autentikasi Anonim di latar belakang sebelum mengambil data
+            await window.fs.signInAnonymously(window.auth);
+
+            // 2. Jika sukses bypass auth token, ambil data seperti biasa
+            const [usersSnap, attSnap, holSnap, setSnap] = await Promise.all([
+              window.fs.getDocs(window.fs.collection(window.db, "users")),
+              window.fs.getDocs(window.fs.collection(window.db, "attendance")),
+              window.fs.getDocs(window.fs.collection(window.db, "holidays")),
+              window.fs.getDocs(window.fs.collection(window.db, "settings"))
+            ]);
+
+            setUsersDb(usersSnap.docs.map(d => d.data()));
+            setAttendanceDb(attSnap.docs.map(d => d.data()));
+            setHolidaysDb(holSnap.docs.map(d => d.data()));
+            
+            let s = {};
+            setSnap.forEach(d => { if(d.id === 'config') s = d.data(); });
+            setSettingsDb(s);
+            
+            setIsLoading(false);
+          } catch (error) {
+            console.error("Gagal memuat dokumen resmi dari Firestore", error);
+            setIsLoading(false);
+          }
+        };
+
+        const checkFirebase = () => {
+          if (window.db && window.fs) initData();
+          else window.addEventListener('firebase-ready', initData, {once: true});
+        };
+        checkFirebase();
+      }, []);
+
+      if (isLoading) {
+        return (
+          <div className="min-h-screen flex items-center justify-center flex-col">
+            <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin mb-4"></div>
+            <p className="font-bold text-slate-500 animate-pulse tracking-widest text-[10px] uppercase">Memuat Dokumen Resmi...</p>
+          </div>
+        );
+      }
+
+      const clients = usersDb.filter(u => u.role === 'client');
+      const monthName = new Date(year, monthIndex).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+      
+      let pjs = [];
+      try { pjs = JSON.parse(settingsDb.penanggungJawab || "[]"); } catch(e) {}
+      if (pjs.length === 0) pjs = [{jabatan: 'Penanggung Jawab', nama: 'Belum Diatur', nip: '-'}];
+
+      const nPjs = pjs.length;
+      let htmlRows = [];
+      let pjsIndex = 0;
+      
+      if (nPjs % 2 !== 0) {
+          htmlRows.push({ type: 'center', item: pjs[0] });
+          pjsIndex = 1;
+      } else {
+          htmlRows.push({ type: 'pair', left: pjs[1], right: pjs[0] });
+          pjsIndex = 2;
+      }
+
+      while (pjsIndex < nPjs) {
+          htmlRows.push({ type: 'pair', left: pjs[pjsIndex + 1], right: pjs[pjsIndex] });
+          pjsIndex += 2;
+      }
+      htmlRows.reverse();
+
+      const SignatureBlock = ({ pj }) => (
+          <div className="flex flex-col items-center text-center pt-4">
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-10">{pj.jabatan}</p>
+              <div className="border-b border-slate-800 pb-1 px-4 min-w-[180px]">
+                  <p className="font-black text-slate-900 uppercase tracking-wide text-sm">{pj.nama}</p>
+              </div>
+              <p className="text-[10px] font-bold text-slate-600 mt-1">{pj.nip && pj.nip !== '-' ? pj.nip : '\u00A0'}</p>
+          </div>
+      );
+
+      const addressParts = [
+        settingsDb.alamat,
+        settingsDb.desaKecamatan,
+        settingsDb.kotaKabupaten,
+        settingsDb.negara,
+        settingsDb.kodePos
+      ].filter(Boolean).join(', ');
+
+      const displayVid = window.VID_PARAM !== "-" ? window.VID_PARAM : `${year}${monthStr}-XXXXXXXX`;
+
+      return (
+        <div className="min-h-screen py-8 px-2 sm:px-6 lg:px-8 print:py-0 print:px-0">
+          <div className="max-w-6xl mx-auto bg-white shadow-xl border border-slate-300 p-8 sm:p-12 print-border-none relative">
+            <div className="flex flex-col md:flex-row justify-between items-start gap-6 pb-6 border-b-2 border-slate-800 mb-6">
+              <div className="flex items-start gap-4">
+                <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-md print:border print:border-slate-300">
+                  <i className="fas fa-building text-2xl"></i>
+                </div>
+                <div>
+                  {settingsDb.namaKegiatan && settingsDb.namaKegiatan.trim() !== '' && (
+                    <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight uppercase leading-none mb-0.5">
+                      {settingsDb.namaKegiatan}
+                    </h2>
+                  )}
+                  <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight uppercase leading-none mb-1">
+                    {settingsDb.namaInstansi || 'Instansi Sistem Presensi'}
+                  </h1>
+                  {addressParts && (
+                    <p className="text-slate-600 font-medium text-xs md:text-sm mt-1 max-w-2xl leading-relaxed">
+                      {addressParts}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-col md:items-end w-full md:w-auto bg-slate-50 md:bg-transparent p-4 md:p-0 rounded-xl md:rounded-none border border-slate-100 md:border-none">
+                 <div className="inline-flex items-center space-x-3 bg-emerald-50 text-emerald-800 px-4 py-2.5 rounded-xl border-2 border-emerald-200 mb-4 shadow-sm">
+                    <i className="fas fa-check-circle text-2xl text-emerald-500"></i>
+                    <span className="text-sm font-black uppercase tracking-widest text-emerald-700">Terverifikasi</span>
+                 </div>
+                 
+                 <table className="text-[10px] text-slate-500 font-mono tracking-widest uppercase text-left md:text-right">
+                   <tbody>
+                     <tr>
+                       <td className="pr-3 pb-1 text-slate-400">ID Dokumen</td>
+                       <td className="pb-1 text-slate-800 font-bold">: {displayVid}</td>
+                     </tr>
+                     <tr>
+                       <td className="pr-3 text-slate-400">Tipe Data</td>
+                       <td className="text-slate-800 font-bold">: Laporan Kehadiran</td>
+                     </tr>
+                   </tbody>
+                 </table>
+              </div>
+            </div>
+
+            <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between bg-slate-50 border border-slate-200 p-4 sm:p-5 rounded-2xl border-l-4 border-l-blue-600">
+              <div>
+                <h2 className="text-lg md:text-xl font-black text-slate-800 uppercase tracking-widest">Rekapitulasi Presensi</h2>
+                <p className="text-xs text-slate-500 font-medium mt-1">Data ditarik secara langsung dari pangkalan data sistem.</p>
+              </div>
+              <div className="mt-4 md:mt-0 bg-white px-5 py-2.5 rounded-xl border border-slate-200 shadow-sm text-left md:text-center">
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Periode Laporan</p>
+                <p className="text-sm sm:text-base text-blue-700 font-black uppercase tracking-widest">{monthName}</p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto pb-4">
+              <table className="w-full text-left border-collapse min-w-[800px] border-2 border-slate-800">
+                <thead>
+                  <tr className="bg-slate-100 text-[10px] font-black uppercase text-slate-700 border-b-2 border-slate-800">
+                    <th className="p-2 border-r border-slate-300 text-center w-10">No</th>
+                    <th className="p-2 border-r border-slate-300 whitespace-nowrap">Nama Lengkap</th>
+                    {Array.from({ length: daysInMonth }, (_, i) => (
+                      <th key={i} className="p-2 border-r border-slate-300 text-center w-7">{i + 1}</th>
+                    ))}
+                    <th className="p-2 border-r border-slate-300 text-center text-green-700" title="Hadir">H</th>
+                    <th className="p-2 border-r border-slate-300 text-center text-purple-700" title="Izin">I</th>
+                    <th className="p-2 border-r border-slate-300 text-center text-yellow-700" title="Sakit">S</th>
+                    <th className="p-2 text-center text-red-700" title="Alpa">A</th>
+                  </tr>
+                </thead>
+                <tbody className="text-[10px] sm:text-xs">
+                  {clients.map((client, index) => {
+                    let totalH = 0, totalI = 0, totalS = 0, totalA = 0;
+                    const dailyData = Array.from({ length: daysInMonth }, (_, d) => {
+                      const dayDate = new Date(year, monthIndex, d + 1);
+                      const dateStr = getLocalYYYYMMDD(dayDate);
+                      const dayOfWeek = dayDate.getDay();
+                      const isRoutineHoliday = (dayOfWeek === 0 && String(settingsDb.liburMinggu).toLowerCase() === 'true') || (dayOfWeek === 6 && String(settingsDb.liburSabtu).toLowerCase() === 'true');
+                      const isSpecialHoliday = holidaysDb.find(h => h.date === dateStr);
+                      
+                      const record = attendanceDb.find(a => a.userId === client.id && a.date === dateStr);
+                      const hasActivityOnDate = attendanceDb.some(a => a.date === dateStr);
+
+                      if (record) {
+                        const s = record.status;
+                        if (['Hadir', 'Terlambat'].includes(s)) { totalH++; return s === 'Hadir' ? {val: 'H', color: 'text-green-700 font-bold bg-green-50/50'} : {val: 'T', color: 'text-orange-600 font-bold bg-orange-50/50'}; }
+                        if (s === 'Izin') { totalI++; return {val: 'I', color: 'text-purple-700 font-bold bg-purple-50/50'}; }
+                        if (s === 'Sakit') { totalS++; return {val: 'S', color: 'text-yellow-600 font-bold bg-yellow-50/50'}; }
+                        if (s === 'Alpa') { totalA++; return {val: 'A', color: 'text-red-600 font-bold bg-red-50/50'}; }
+                        return {val: '', color: ''};
+                      } else {
+                        if (isRoutineHoliday || isSpecialHoliday) return {val: 'L', color: 'bg-red-500 text-white font-bold'};
+                        if (dayDate <= new Date() && hasActivityOnDate) { totalA++; return {val: 'A', color: 'text-red-600 font-bold bg-red-50/50'}; }
+                        return {val: '', color: ''};
+                      }
+                    });
+
+                    return (
+                      <tr key={client.id} className="border-b border-slate-300 last:border-b-0">
+                        <td className="p-2 border-r border-slate-300 text-center font-medium text-slate-600">{index + 1}</td>
+                        <td className="p-2 border-r border-slate-300 font-bold text-slate-900 whitespace-nowrap">{client.name}</td>
+                        {dailyData.map((data, i) => (
+                          <td key={i} className={`p-2 border-r border-slate-300 text-center ${data.color}`}>{data.val}</td>
+                        ))}
+                        <td className="p-2 border-r border-slate-300 text-center font-black text-green-700 bg-slate-50">{totalH}</td>
+                        <td className="p-2 border-r border-slate-300 text-center font-black text-purple-700 bg-slate-50">{totalI}</td>
+                        <td className="p-2 border-r border-slate-300 text-center font-black text-yellow-600 bg-slate-50">{totalS}</td>
+                        <td className="p-2 text-center font-black text-red-600 bg-slate-50">{totalA}</td>
+                      </tr>
+                    );
+                  })}
+                  {clients.length === 0 && <tr><td colSpan={daysInMonth + 6} className="p-10 text-center text-slate-400 font-medium italic">Tidak ada data client.</td></tr>}
+                </tbody>
+              </table>
+              <div className="mt-4 flex flex-wrap gap-4 text-[9px] text-slate-600 font-bold uppercase tracking-wider bg-slate-50 p-3 rounded-lg border border-slate-200">
+                <span className="flex items-center gap-1.5 mr-2">Keterangan :</span>
+                <span className="flex items-center"><div className="w-2.5 h-2.5 bg-green-100 border border-green-400 mr-1.5"></div>H = Hadir</span>
+                <span className="flex items-center"><div className="w-2.5 h-2.5 bg-orange-100 border border-orange-400 mr-1.5"></div>T = Terlambat</span>
+                <span className="flex items-center"><div className="w-2.5 h-2.5 bg-purple-100 border border-purple-400 mr-1.5"></div>I = Izin</span>
+                <span className="flex items-center"><div className="w-2.5 h-2.5 bg-yellow-100 border border-yellow-400 mr-1.5"></div>S = Sakit</span>
+                <span className="flex items-center"><div className="w-2.5 h-2.5 bg-red-100 border border-red-400 mr-1.5"></div>A = Alpa</span>
+                <span className="flex items-center"><div className="w-2.5 h-2.5 bg-red-500 mr-1.5"></div>L = Libur</span>
+              </div>
+            </div>
+
+            <div className="mt-12 pt-8 border-t border-slate-300">
+              <div className="flex flex-col space-y-12">
+                {htmlRows.map((row, rIdx) => {
+                  if (row.type === 'center') {
+                    return (
+                      <div key={rIdx} className="flex justify-center w-full">
+                        <SignatureBlock pj={row.item} />
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <div key={rIdx} className="flex flex-col sm:flex-row print:flex-row justify-between items-center w-full px-4 sm:px-12 gap-y-12 sm:gap-y-0 print:gap-y-0">
+                        <div className="w-full sm:w-1/2 print:w-1/2 flex justify-center">
+                          <SignatureBlock pj={row.left} />
+                        </div>
+                        <div className="w-full sm:w-1/2 print:w-1/2 flex justify-center">
+                          <SignatureBlock pj={row.right} />
+                        </div>
+                      </div>
+                    );
+                  }
+                })}
+              </div>
+            </div>
+
+          </div>
+
+          <div className="text-center mt-8 no-print pb-12">
+             <button onClick={() => window.print()} className="bg-slate-800 hover:bg-blue-600 text-white font-black py-4 px-12 rounded-full shadow-xl transition-all uppercase tracking-widest text-xs active:scale-95">
+               <i className="fas fa-print mr-2 text-lg align-middle"></i> Cetak Laporan Ini
+             </button>
+             <p className="mt-3 text-[10px] text-slate-500 font-medium">Gunakan orientasi Lanskap (Landscape) pada browser untuk cetak tabel terbaik.</p>
+          </div>
+
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<VerificationApp />);
+  </script>
+</body>
+</html>

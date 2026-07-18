@@ -1,110 +1,1963 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Perangkat Guru</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistem Presensi PPL 2</title>
+  
+  <link rel="icon" type="image/png" href="./asset/LOGO%20UNIVERSITAS%20JEMBER%20.png" />
+  <link rel="shortcut icon" type="image/png" href="./asset/LOGO%20UNIVERSITAS%20JEMBER%20.png" />
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js" crossorigin="anonymous"></script>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+  
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    aside::-webkit-scrollbar-thumb { background: #334155; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    .swal2-minimalist-popup {
+      border-radius: 32px !important;
+      padding: 1.5rem !important;
+      background: rgba(255, 255, 255, 0.98) !important;
+      backdrop-filter: blur(10px) !important;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15) !important;
+      border: 1px solid #f1f5f9 !important;
+    }
+
+    /* KEMBALI KE TRANSISI PERTAMA: Efek fade-out & scale-up smooth saat halaman siap */
+    .splash-fade-out {
+      opacity: 0 !important;
+      transform: scale(1.08) !important;
+      transition: opacity 0.6s ease-out, transform 0.6s ease-out !important;
+      pointer-events: none !important;
+    }
+  </style>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+    import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBrvRy59biZZilEgp8HIpHIUA16PcaflJU",
+      authDomain: "perangkat-guru-85e8f.firebaseapp.com",
+      projectId: "perangkat-guru-85e8f",
+      storageBucket: "perangkat-guru-85e8f.firebasestorage.app",
+      messagingSenderId: "489186826165",
+      appId: "1:489186826165:web:c7b6d6a91ec70d12f06bfc",
+      measurementId: "G-6K1DGGKEES"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    window.db = getFirestore(app);
+    window.auth = getAuth(app);
+    
+    window.fs = { 
+      collection, getDocs, setDoc, doc, deleteDoc, updateDoc,
+      signInAnonymously, signOut 
+    };
+    window.dispatchEvent(new Event('firebase-ready'));
+  </script>
 </head>
-<body class="bg-gray-50 h-screen hidden flex flex-col" id="main-content"> <!-- Disembunyikan dulu sampai terverifikasi login -->
+<body class="bg-slate-50 text-slate-800 font-sans antialiased text-sm">
 
-    <!-- Navbar -->
-    <nav class="bg-indigo-600 text-white p-4 flex justify-between items-center shadow-md shrink-0">
-        <h1 class="text-xl font-bold">Aplikasi Perangkat Guru</h1>
-        <div class="flex items-center gap-4">
-            <span id="user-display" class="bg-indigo-700 px-3 py-1 rounded text-sm font-medium">Memuat profil...</span>
-            <button id="btn-logout" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm transition">
-                Keluar
-            </button>
-        </div>
-    </nav>
+  <!-- SPLASH SCREEN: Muncul instan sejak awal sebelum React dikompilasi -->
+  <div id="app-splash-screen" class="fixed inset-0 bg-gradient-to-br from-blue-600 to-blue-700 z-[9999] flex flex-col items-center justify-center text-white p-4 transition-all duration-700">
+    <div id="splash-content" class="flex flex-col items-center max-w-md text-center space-y-5">
+      <img src="./asset/LOGO%20UNIVERSITAS%20JEMBER%20.png" alt="Logo UNEJ" class="w-24 h-auto drop-shadow-xl animate-pulse" onerror="this.style.display='none'">
+      <div class="space-y-1">
+        <h1 class="text-2xl md:text-3xl font-black tracking-tight">Selamat Datang</h1>
+        <p class="text-xs md:text-sm text-blue-100 font-medium opacity-90">Mahasiswa PPG Calon Guru Universitas Jember</p>
+      </div>
+      <div class="pt-4">
+        <div class="w-10 h-10 border-4 border-white/20 border-t-white rounded-full animate-spin"></div>
+      </div>
+    </div>
+  </div>
 
-    <!-- Isi Konten Utama Aplikasi -->
-    <main class="p-6 flex-1 flex flex-col max-w-7xl w-full mx-auto">
-        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex-1 flex flex-col">
-            <div class="mb-4 flex justify-between items-center">
-                <div>
-                    <h2 class="text-xl font-bold text-gray-800">Editor Perangkat Pembelajaran (Modular Component)</h2>
-                    <p class="text-xs text-gray-500">Memanggil modul eksternal wordeditor.html via iframe secara dinamis.</p>
-                </div>
-                <!-- Tombol aksi pembuktian interaksi data antar file -->
-                <button onclick="saveDocumentAction()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition">
-                    Simpan Dokumen
+  <div id="root"></div>
+  
+  <script type="text/babel" data-presets="react,env">
+    const { useState, useEffect, useMemo } = React;
+
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371e3;
+      const radLat1 = lat1 * Math.PI/180;
+      const radLat2 = lat2 * Math.PI/180;
+      const deltaLat = (lat2-lat1) * Math.PI/180;
+      const deltaLon = (lon2-lon1) * Math.PI/180;
+      const a = Math.sin(deltaLat/2) * Math.sin(deltaLat/2) + Math.cos(radLat1) * Math.cos(radLat2) * Math.sin(deltaLon/2) * Math.sin(deltaLon/2);
+      return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+    }
+
+    function getLocalYYYYMMDD(dateObj) {
+      const y = dateObj.getFullYear();
+      const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const d = String(dateObj.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function formatTimeForInput(timeStr) {
+      if (!timeStr || timeStr === '-') return '';
+      return timeStr.replace(/\./g, ':').slice(0, 5);
+    }
+
+    const CalendarComponent = ({ userRole, settingsDb, setSettingsDb, holidaysDb, setHolidaysDb, isSavingSettings, setIsSavingSettings, attendanceDb, usersDb }) => {
+      const [viewDate, setViewDate] = useState(new Date());
+
+      const days = useMemo(() => {
+        const year = viewDate.getFullYear();
+        const month = viewDate.getMonth();
+        let firstDay = new Date(year, month, 1).getDay() - 1;
+        if (firstDay === -1) firstDay = 6;
+        const lastDate = new Date(year, month + 1, 0).getDate();
+        
+        let dateArr = [];
+        for (let i = 0; i < firstDay; i++) dateArr.push(null);
+        for (let i = 1; i <= lastDate; i++) dateArr.push(new Date(year, month, i));
+        return dateArr;
+      }, [viewDate]);
+
+      const changeMonth = (offset) => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + offset, 1));
+
+      const handleDateClick = async (date) => {
+        if (userRole !== 'admin') return;
+        if (!date) return;
+        const dateStr = getLocalYYYYMMDD(date);
+        const formattedDateTitle = date.toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'});
+
+        const updateSwalListDOM = (currentHolidays) => {
+          const listContainer = document.getElementById('swal-holiday-list-container');
+          if (!listContainer) return;
+          
+          if (currentHolidays.length === 0) {
+            listContainer.innerHTML = `<p class="text-xs text-slate-400 italic px-1 py-2 bg-slate-50 rounded-xl text-center border border-dashed border-slate-200">Belum ada agenda libur khusus</p>`;
+          } else {
+            listContainer.innerHTML = currentHolidays.map(h => `
+              <div id="holiday-item-${h.id}" class="flex items-center justify-between bg-red-50/60 border border-red-100 p-3 rounded-xl">
+                <span class="text-xs font-semibold text-slate-700">${h.description}</span>
+                <button type="button" onclick="window.deleteHolidayEvent(${h.id})" class="w-6 h-6 bg-red-100 hover:bg-red-500 text-red-600 hover:text-white rounded-lg flex items-center justify-center transition-colors shadow-sm">
+                  <i class="fas fa-times text-[10px]"></i>
                 </button>
-            </div>
-            
-            <!-- MEMANGGIL COMPONENT EDITOR VIA IFRAME -->
-            <div class="flex-1 border border-slate-300 rounded-xl overflow-hidden bg-slate-400">
-                <iframe id="editor-frame" src="wordeditor.html" class="w-full h-full border-none"></iframe>
-            </div>
-        </div>
-    </main>
-
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyBrvRy59biZZilEgp8HIpHIUA16PcaflJU",
-            authDomain: "perangkat-guru-85e8f.firebaseapp.com",
-            projectId: "perangkat-guru-85e8f",
-            storageBucket: "perangkat-guru-85e8f.firebasestorage.app",
-            messagingSenderId: "489186826165",
-            appId: "1:489186826165:web:c7b6d6a91ec70d12f06bfc",
-            measurementId: "G-6K1DGGKEES"
+              </div>
+            `).join('');
+          }
+          const labelCounter = document.getElementById('swal-holiday-counter-label');
+          if (labelCounter) labelCounter.innerText = `Acara Aktif (${currentHolidays.length})`;
         };
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+        Swal.fire({
+          title: `<h2 class="text-lg font-bold text-slate-800">Agenda Hari Libur</h2><p class="text-xs text-slate-400 mt-0.5">${formattedDateTitle}</p>`,
+          html: `
+            <div class="text-left mt-4 space-y-4">
+              <div class="space-y-2">
+                <label id="swal-holiday-counter-label" class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 px-1">Acara Aktif (0)</label>
+                <div id="swal-holiday-list-container" class="space-y-2">
+                </div>
+              </div>
+              <hr class="border-slate-100" />
+              <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex items-center gap-2">
+                <div class="flex-1">
+                  <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Tambah Acara Baru</label>
+                  <input type="text" id="swal-new-holiday" class="w-full bg-transparent outline-none font-bold text-slate-700 text-sm placeholder-slate-400" placeholder="Cth: Idul Fitri / Libur Semester">
+                </div>
+                <button type="button" onclick="window.addHolidayEvent('${dateStr}')" class="w-10 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center justify-center transition-all active:scale-95 shadow-md shadow-blue-100 shrink-0">
+                  <i class="fas fa-plus text-sm"></i>
+                </button>
+              </div>
+            </div>
+          `,
+          showConfirmButton: false,
+          showCancelButton: true,
+          cancelButtonText: 'Tutup',
+          buttonsStyling: false,
+          customClass: {
+            popup: 'swal2-minimalist-popup w-[90%] max-w-md',
+            cancelButton: 'w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 px-4 rounded-xl transition-all text-sm mt-2'
+          },
+          didOpen: () => {
+            let currentLocalHolidays = [...window.getLatestHolidaysByDate(dateStr)];
+            updateSwalListDOM(currentLocalHolidays);
 
-        const mainContent = document.getElementById('main-content');
-        const userDisplay = document.getElementById('user-display');
+            window.deleteHolidayEvent = async (id) => {
+              const targetDOM = document.getElementById(`holiday-item-${id}`);
+              if (targetDOM) targetDOM.style.opacity = "0.4"; 
 
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                try {
-                    const userDoc = await getDoc(doc(db, "users", user.uid));
-                    if (userDoc.exists()) {
-                        const data = userDoc.data();
-                        userDisplay.textContent = `${data.username || 'Admin'} (${data.role || 'user'})`;
-                    } else {
-                        userDisplay.textContent = user.email;
-                    }
-                } catch (err) {
-                    userDisplay.textContent = "Terautentikasi";
-                }
+              try {
+                await window.fs.deleteDoc(window.fs.doc(window.db, "holidays", id.toString()));
+                setHolidaysDb(prev => {
+                  const updated = prev.filter(h => h.id !== id);
+                  currentLocalHolidays = updated.filter(h => h.date === dateStr);
+                  updateSwalListDOM(currentLocalHolidays);
+                  return updated;
+                });
+              } catch (e) {
+                if (targetDOM) targetDOM.style.opacity = "1";
+                alert("Gagal menghapus data di Firestore");
+              }
+            };
+
+            window.addHolidayEvent = async (targetDate) => {
+              const inputField = document.getElementById('swal-new-holiday');
+              const val = inputField ? inputField.value.trim() : "";
+              if (!val) return alert("Keterangan libur tidak boleh kosong!");
+              
+              if (inputField) inputField.disabled = true;
+
+              const added = { id: Date.now(), date: targetDate, description: val };
+              try {
+                await window.fs.setDoc(window.fs.doc(window.db, "holidays", added.id.toString()), added);
+                if (inputField) { inputField.disabled = false; inputField.value = ""; }
                 
-                mainContent.classList.remove('hidden');
-            } else {
-                window.location.href = "login.html";
-            }
+                setHolidaysDb(prev => {
+                  const updated = [...prev, added];
+                  currentLocalHolidays = updated.filter(h => h.date === dateStr);
+                  updateSwalListDOM(currentLocalHolidays);
+                  return updated;
+                });
+              } catch (e) {
+                if (inputField) inputField.disabled = false;
+                alert("Gagal menyimpan data baru");
+              }
+            };
+          },
+          didClose: () => {
+            delete window.deleteHolidayEvent;
+            delete window.addHolidayEvent;
+          }
         });
+      };
 
-        document.getElementById('btn-logout').addEventListener('click', () => {
-            signOut(auth).then(() => {
-                window.location.href = "login.html";
-            }).catch((error) => {
-                alert("Gagal logout: " + error.message);
-            });
-        });
+      useEffect(() => {
+        window.getLatestHolidaysByDate = (dStr) => holidaysDb.filter(h => h.date === dStr);
+        return () => { delete window.getLatestHolidaysByDate; };
+      }, [holidaysDb]);
 
-        // Fungsi Aksi untuk Mengambil data teks HTML dari dalam Iframe WordEditor
-        window.saveDocumentAction = function() {
-            const iframe = document.getElementById('editor-frame');
-            
-            // Mengakses fungsi internal getContentHTML() milik wordeditor.html
-            if (iframe && iframe.contentWindow && typeof iframe.contentWindow.getContentHTML === 'function') {
-                const htmlHasilKetik = iframe.contentWindow.getContentHTML();
-                
-                console.log("Isi teks editor:", htmlHasilKetik);
-                alert("Data teks berhasil ditarik dari Iframe! (Cek log console untuk melihat struktur HTML lengkap berkas Base64 gambar)");
-                // Di sini Anda bisa melanjutkan proses penyimpanan string htmlHasilKetik ke Firestore Cloud
-            } else {
-                alert("Gagal memuat atau mengakses komponen editor.");
-            }
+      const handleSaveRoutineSettings = async () => {
+        setIsSavingSettings(true);
+        try {
+          await window.fs.setDoc(window.fs.doc(window.db, "settings", "config"), settingsDb);
+          setIsSavingSettings(false);
+          Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Aturan libur diperbarui.', timer: 1500, showConfirmButton: false });
+        } catch (error) {
+          setIsSavingSettings(false);
+          Swal.fire('Error', 'Gagal menyimpan aturan', 'error');
         }
-    </script>
+      };
+
+      const isLiburMinggu = String(settingsDb.liburMinggu).toLowerCase() === 'true';
+      const isLiburSabtu = String(settingsDb.liburSabtu).toLowerCase() === 'true';
+
+      return (
+        <div className="animate-fadeIn space-y-6">
+          <div className="bg-white p-4 md:p-8 rounded-2xl shadow-sm border border-slate-200">
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 space-y-4 md:space-y-0">
+              <div className="flex items-center justify-between w-full md:w-auto bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+                <button onClick={() => changeMonth(-1)} className="p-3 md:p-2 bg-white hover:bg-slate-200 rounded-lg shadow-sm transition-all shrink-0">
+                  <i className="fas fa-chevron-left text-slate-600 text-sm"></i>
+                </button>
+                <h3 className="text-base sm:text-lg font-bold text-slate-800 text-center tracking-tight flex-1 md:min-w-[160px]">
+                  {viewDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+                </h3>
+                <button onClick={() => changeMonth(1)} className="p-3 md:p-2 bg-white hover:bg-slate-200 rounded-lg shadow-sm transition-all shrink-0">
+                  <i className="fas fa-chevron-right text-slate-600 text-sm"></i>
+                </button>
+              </div>
+
+              {userRole === 'admin' ? (
+                <div className="flex items-center space-x-3 bg-slate-50 p-2 rounded-xl border border-slate-200 flex-wrap sm:flex-nowrap gap-y-2">
+                  <label className="flex items-center space-x-2 cursor-pointer group px-2">
+                    <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" 
+                      checked={isLiburMinggu} onChange={e => setSettingsDb({...settingsDb, liburMinggu: e.target.checked ? 'true' : 'false'})} />
+                    <span className="text-xs font-bold text-slate-600 group-hover:text-blue-600 transition-colors">Minggu Libur</span>
+                  </label>
+                  <div className="h-5 w-px bg-slate-300 hidden sm:block"></div>
+                  <label className="flex items-center space-x-2 cursor-pointer group px-2">
+                    <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" 
+                      checked={isLiburSabtu} onChange={e => setSettingsDb({...settingsDb, liburSabtu: e.target.checked ? 'true' : 'false'})} />
+                    <span className="text-xs font-bold text-slate-600 group-hover:text-blue-600 transition-colors">Sabtu Libur</span>
+                  </label>
+                  <button onClick={handleSaveRoutineSettings} disabled={isSavingSettings} 
+                    className="sm:ml-2 w-full sm:w-auto bg-slate-800 text-white text-xs px-4 py-2 rounded-lg hover:bg-blue-600 transition-all font-bold shadow-sm disabled:opacity-50">
+                    {isSavingSettings ? <i className="fas fa-spinner fa-spin"></i> : 'Update'}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center bg-blue-50 text-blue-600 px-4 py-2 rounded-xl border border-blue-100">
+                  <i className="fas fa-info-circle mr-2"></i>
+                  <span className="text-xs font-bold">Mode Hanya Lihat</span>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-7 gap-1 md:gap-2">
+              {['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].map((day, i) => (
+                <div key={day} className={`pb-2 text-center text-[10px] font-bold uppercase tracking-wider ${i === 6 ? 'text-red-500' : 'text-slate-400'}`}>
+                  {day}
+                </div>
+              ))}
+              {days.map((date, idx) => {
+                if (!date) return <div key={`p-${idx}`} className="h-20 sm:h-32 bg-slate-50/50 rounded-xl opacity-40"></div>;
+                
+                const dateStr = getLocalYYYYMMDD(date);
+                const dayOfWeek = date.getDay();
+                const isRoutineHoliday = (dayOfWeek === 0 && isLiburMinggu) || (dayOfWeek === 6 && isLiburSabtu);
+                
+                const specialHolidays = holidaysDb.filter(h => h.date === dateStr);
+                const isToday = dateStr === getLocalYYYYMMDD(new Date());
+
+                const dailyRecords = attendanceDb.filter(a => a.date === dateStr && ['Hadir', 'Terlambat'].includes(a.status));
+                const attendedNames = dailyRecords.map(r => {
+                  const u = usersDb.find(user => user.id === r.userId);
+                  return u ? u.username : null; 
+                }).filter(Boolean);
+
+                return (
+                  <div key={dateStr} onClick={() => handleDateClick(date)}
+                    className={`relative h-20 sm:h-32 p-1.5 sm:p-2 rounded-xl border transition-all flex flex-col overflow-hidden
+                      ${isToday ? 'border-blue-500 ring-2 ring-blue-100 z-10 bg-white' : 'border-transparent hover:border-slate-300 hover:shadow-sm'}
+                      ${isRoutineHoliday || specialHolidays.length > 0 ? 'bg-red-50/30 hover:bg-red-50/60' : 'bg-slate-50 hover:bg-white'}
+                      ${userRole === 'admin' ? 'cursor-pointer group' : ''}
+                    `}>
+                    <div className="flex justify-between items-start mb-1 shrink-0">
+                      <span className={`text-xs sm:text-sm font-bold w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full transition-colors z-10
+                        ${isToday ? 'bg-blue-600 text-white shadow-sm' : (isRoutineHoliday || specialHolidays.length > 0 ? 'text-red-500' : 'text-slate-700')}
+                      `}>{date.getDate()}</span>
+                      {specialHolidays.length > 0 && <div className="bg-red-500 w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full animate-pulse shadow-sm shadow-red-300 z-10 mt-1 mr-1 shrink-0"></div>}
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto no-scrollbar space-y-0.5 z-10 relative text-left min-h-[20px]">
+                      {attendedNames.map((name, i) => (
+                        <div key={i} className="text-[7px] sm:text-[9px] bg-blue-100/80 text-blue-700 px-1 py-0.5 rounded truncate font-semibold leading-tight">
+                          {name}
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="mt-1 z-10 relative shrink-0 pt-1 border-t border-slate-200/50 space-y-0.5">
+                      {isRoutineHoliday && specialHolidays.length === 0 && <span className="text-[7px] sm:text-[9px] text-red-400 font-medium uppercase tracking-wider opacity-80 block">Libur</span>}
+                      {specialHolidays.map((sh, sIdx) => (
+                        <div key={sh.id || sIdx} className="bg-red-500 text-white px-1 py-0.5 rounded shadow-sm">
+                          <p className="text-[7px] sm:text-[9px] leading-tight font-medium line-clamp-1">{sh.description}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {userRole === 'admin' && (
+                      <div className="absolute inset-0 bg-blue-600/0 group-hover:bg-blue-600/5 transition-colors flex items-center justify-center pointer-events-none">
+                        <i className="fas fa-plus-circle text-blue-600 opacity-0 group-hover:opacity-20 text-xl transform scale-50 group-hover:scale-100 transition-all"></i>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-6 flex flex-wrap gap-4 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-t border-slate-100 pt-4 justify-center">
+              <div className="flex items-center space-x-1.5"><div className="w-3 h-3 bg-red-500 rounded-full"></div><span>Libur Nasional</span></div>
+              <div className="flex items-center space-x-1.5"><div className="w-3 h-3 bg-red-50 border border-red-200 rounded"></div><span>Libur</span></div>
+              <div className="flex items-center space-x-1.5"><div className="w-3 h-3 bg-blue-600 rounded-full"></div><span>Hari Ini</span></div>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    function App() {
+      const [isLoading, setIsLoading] = useState(true);
+      const [isDataReady, setIsDataReady] = useState(false);
+      const [isLocating, setIsLocating] = useState(false); 
+      const [isSavingSettings, setIsSavingSettings] = useState(false); 
+      
+      const [isSystemEmpty, setIsSystemEmpty] = useState(false); 
+      const [regForm, setRegForm] = useState({ name: '', username: '' });
+
+      const [user, setUser] = useState(() => {
+        try {
+          const savedUser = localStorage.getItem('presensi_user');
+          return savedUser ? JSON.parse(savedUser) : null; 
+        } catch(e) { 
+          return null; 
+        }
+      }); 
+      
+      const [activeMenu, setActiveMenu] = useState(() => {
+        try {
+          return localStorage.getItem('presensi_menu') || 'dashboard';
+        } catch(e) {
+          return 'dashboard';
+        }
+      });
+      
+      const [filterMonth, setFilterMonth] = useState(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      });
+
+      const [usersDb, setUsersDb] = useState([]);
+      const [attendanceDb, setAttendanceDb] = useState([]);
+      const [holidaysDb, setHolidaysDb] = useState([]); 
+      const [verificationsDb, setVerificationsDb] = useState([]); 
+      
+      const [settingsDb, setSettingsDb] = useState({
+        namaKegiatan: '',
+        namaInstansi: 'Memuat...', lokasi: '', jamMasuk: '08:00', jamPulang: '17:00', liburMinggu: 'true', liburSabtu: 'false', penanggungJawab: '[]',
+        useLocation: 'true', useTime: 'true', alamat: '', desaKecamatan: '', kotaKabupaten: '', negara: 'Indonesia', kodePos: '', appScriptUrl: ''
+      });
+      const [currentTime, setCurrentTime] = useState(new Date());
+      const [newUser, setNewUser] = useState({ name: '', username: '', nim: '' });
+
+      const loadAllSystemData = async () => {
+        const [usersSnap, attSnap, holSnap, verSnap, setSnap] = await Promise.all([
+          window.fs.getDocs(window.fs.collection(window.db, "users")),
+          window.fs.getDocs(window.fs.collection(window.db, "attendance")),
+          window.fs.getDocs(window.fs.collection(window.db, "holidays")),
+          window.fs.getDocs(window.fs.collection(window.db, "verifications")),
+          window.fs.getDocs(window.fs.collection(window.db, "settings"))
+        ]);
+
+        let u = usersSnap.docs.map(d => d.data());
+        let a = attSnap.docs.map(d => d.data());
+        let h = holSnap.docs.map(d => d.data());
+        let v = verSnap.docs.map(d => d.data());
+        
+        let s = {};
+        setSnap.forEach(d => { if(d.id === 'config') s = d.data(); });
+
+        if(Object.keys(s).length === 0) {
+          s = { namaInstansi: 'Sistem Presensi Default', jamMasuk: '08:00', jamPulang: '17:00', liburMinggu: 'true', liburSabtu: 'false', useLocation: 'false', useTime: 'true' };
+          await window.fs.setDoc(window.fs.doc(window.db, "settings", "config"), s);
+        }
+
+        let pM = s.jamMasuk, pP = s.jamPulang;
+        const fix = (t) => { if(!t) return null; const m = String(t).replace(/\./g, ':').match(/(\d{1,2}):(\d{2})/); return m ? `${m[1].padStart(2, '0')}:${m[2]}` : t; };
+        
+        const finalSettings = { 
+          ...settingsDb, 
+          ...s, 
+          jamMasuk: fix(pM) || '08:00', 
+          jamPulang: fix(pP) || '17:00',
+          useLocation: s.hasOwnProperty('useLocation') ? String(s.useLocation).toLowerCase() : 'true',
+          useTime: s.hasOwnProperty('useTime') ? String(s.useTime).toLowerCase() : 'true',
+        };
+
+        const now = new Date();
+        const currentYYYYMMDD = getLocalYYYYMMDD(now);
+        const currentHm = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace('.', ':');
+        
+        let processedAtt = a.map(record => {
+            if (record.status === 'Menunggu') {
+                let shouldBeAlpa = false;
+                if (record.date < currentYYYYMMDD) {
+                    shouldBeAlpa = true;
+                } else if (record.date === currentYYYYMMDD) {
+                    const pH = parseInt((finalSettings.jamPulang || '17:00').split(':')[0]);
+                    const pMin = parseInt((finalSettings.jamPulang || '17:00').split(':')[1]);
+                    const cH = parseInt(currentHm.split(':')[0]);
+                    const cMin = parseInt(currentHm.split(':')[1]);
+                    
+                    if (cH > pH || (cH === pH && cMin >= pMin)) {
+                        shouldBeAlpa = true;
+                    }
+                }
+                if (shouldBeAlpa) {
+                    window.fs.updateDoc(window.fs.doc(window.db, "attendance", record.id.toString()), { status: 'Alpa' }).catch(console.error);
+                    return { ...record, status: 'Alpa' };
+                }
+            }
+            return record;
+        });
+
+        setSettingsDb(finalSettings);
+        setUsersDb(u);
+        setHolidaysDb(h);
+        setVerificationsDb(v);
+        setAttendanceDb(processedAtt);
+        return u;
+      };
+
+      useEffect(() => {
+        const initData = async () => {
+          try {
+            await window.fs.signInAnonymously(window.auth);
+
+            const usersSnap = await window.fs.getDocs(window.fs.collection(window.db, "users"));
+            
+            if (usersSnap.empty) {
+               setIsSystemEmpty(true);
+               setSettingsDb(prev => ({ ...prev, namaInstansi: "Setup Sistem Baru" }));
+            } else {
+               setIsSystemEmpty(false);
+               let savedUserStr = null;
+               try { savedUserStr = localStorage.getItem('presensi_user'); } catch(e) {}
+
+               if (savedUserStr) {
+                  const parsed = JSON.parse(savedUserStr);
+                  const uList = await loadAllSystemData();
+                  const validUser = uList.find(user => user.username.toLowerCase() === parsed.username.toLowerCase());
+                  
+                  if(validUser){
+                      setUser(validUser);
+                      setIsDataReady(true);
+                  } else {
+                      try { localStorage.removeItem('presensi_user'); } catch(e) {}
+                  }
+               } else {
+                  const setSnap = await window.fs.getDocs(window.fs.collection(window.db, "settings"));
+                  let s = {};
+                  setSnap.forEach(d => { if(d.id === 'config') s = d.data(); });
+                  setSettingsDb(prev => ({ ...prev, namaInstansi: s.namaInstansi || "Sistem Presensi PPL 2" }));
+               }
+            }
+            
+            // KEMBALI KE ANIMASI TRANSISI PERTAMA: Smooth Fade-Out & Scale-Up halaman splash
+            const splashDOM = document.getElementById('app-splash-screen');
+            if (splashDOM) {
+              splashDOM.classList.add('splash-fade-out');
+              setTimeout(() => splashDOM.remove(), 600); 
+            }
+            setIsLoading(false);
+          } catch (error) {
+            console.error(error);
+            Swal.fire('Koneksi Gagal', 'Gagal memuat database Firestore.', 'error');
+            setIsLoading(false);
+          }
+        };
+
+        const checkFirebase = () => {
+          if (window.db && window.fs) initData();
+          else window.addEventListener('firebase-ready', initData, {once: true});
+        };
+        checkFirebase();
+
+        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+        return () => clearInterval(timer);
+      }, []);
+
+      const changeMenu = (menuName) => {
+        setActiveMenu(menuName);
+        try { localStorage.setItem('presensi_menu', menuName); } catch(e) {}
+      };
+
+      const handleLoginClick = async (username) => {
+        if (!username) {
+           Swal.fire({ icon: 'warning', title: 'Peringatan', text: 'Username tidak boleh kosong!', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }});
+           return;
+        }
+
+        Swal.fire({
+          html: '<div class="flex flex-col items-center py-2"><div class="w-10 h-10 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin mb-4"></div><p class="text-slate-600 font-bold text-sm">Memverifikasi Akun</p></div>',
+          allowOutsideClick: false, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }
+        });
+
+        try {
+          const uList = await loadAllSystemData();
+          const found = uList.find(u => u.username.toLowerCase() === username.trim().toLowerCase());
+          
+          if (found) {
+            setUser(found);
+            setIsDataReady(true);
+            try { localStorage.setItem('presensi_user', JSON.stringify(found)); } catch(e) {}
+            Swal.fire({ icon: 'success', title: 'Berhasil!', text: `Selamat datang, ${found.name}`, timer: 1200, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } }).then(() => changeMenu('dashboard'));
+          } else {
+            Swal.fire({ icon: 'error', title: 'Akses Ditolak', text: 'Username tidak terdaftar.', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+          }
+        } catch(e) {
+          console.error(e);
+          Swal.fire({ icon: 'error', title: 'Koneksi Gagal', text: 'Periksa internet Anda.', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+        }
+      };
+
+      const handleRegisterAdmin = async (e) => {
+        e.preventDefault();
+        if(!regForm.name || !regForm.username) return;
+
+        Swal.fire({
+          html: '<div class="flex flex-col items-center py-2"><div class="w-10 h-10 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin mb-4"></div><p class="text-slate-600 font-bold text-sm">Membangun Akun Utama...</p></div>',
+          allowOutsideClick: false, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }
+        });
+
+        try {
+          const mainAdmin = {
+            id: Date.now(),
+            name: regForm.name.trim(),
+            username: regForm.username.trim().toLowerCase(),
+            role: 'admin',
+            nim: null 
+          };
+
+          await window.fs.setDoc(window.fs.doc(window.db, "users", mainAdmin.id.toString()), mainAdmin);
+          
+          Swal.fire({
+            icon: 'success',
+            title: 'Sistem Amankan!',
+            text: 'Akun Admin Utama berhasil dibuat. Memuat ulang sistem...',
+            timer: 2000,
+            showConfirmButton: false,
+            customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }
+          }).then(() => {
+             window.location.reload();
+          });
+        } catch(err) {
+          console.error(err);
+          Swal.fire('Gagal Setup', 'Terjadi kesalahan: ' + err.message, 'error');
+        }
+      };
+
+      const handleAddBulkAttendance = () => {
+        const [yearStr, monthStr] = filterMonth.split('-');
+        const y = parseInt(yearStr);
+        const mIdx = parseInt(monthStr) - 1;
+        const totalDays = new Date(y, mIdx + 1, 0).getDate();
+
+        const existingDates = new Set(attendanceDb.filter(a => a.date.startsWith(filterMonth)).map(a => a.date));
+        
+        let availableDates = [];
+        for (let d = 1; d <= totalDays; d++) {
+          const dateObj = new Date(y, mIdx, d);
+          const dateStr = getLocalYYYYMMDD(dateObj);
+          if (!existingDates.has(dateStr)) {
+            availableDates.push({
+              value: dateStr,
+              label: dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+            });
+          }
+        }
+
+        if (availableDates.length === 0) {
+          return Swal.fire({ icon: 'info', title: 'Pemberitahuan', text: 'Semua tanggal pada bulan ini sudah memiliki data presensi.', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+        }
+
+        Swal.fire({
+          title: '<h2 class="text-lg font-bold text-slate-800">Tambah Presensi Massal</h2>',
+          html: `
+            <div class="text-left mt-2">
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Pilih Tanggal Kehadiran</label>
+                <select id="bulk-date-select" class="w-full bg-transparent outline-none font-bold text-slate-700 text-sm">
+                  ${availableDates.map(d => `<option value="${d.value}">${d.label}</option>`).join('')}
+                </select>
+              </div>
+              <p class="text-[10px] text-slate-400 font-semibold mt-2 px-1 leading-relaxed">
+                *Aksi ini akan mendaftarkan seluruh siswa/client sebagai <b>Hadir</b> dengan jam masuk & pulang default pada tanggal yang dipilih.
+              </p>
+            </div>
+          `,
+          showCancelButton: true, confirmButtonText: 'Simpan Kehadiran', cancelButtonText: 'Batal', buttonsStyling: false,
+          customClass: { 
+            popup: 'swal2-minimalist-popup w-[90%] max-w-md', 
+            confirmButton: 'w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all mb-2 mt-4 text-sm', 
+            cancelButton: 'w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 px-4 rounded-xl transition-all text-sm', 
+            actions: 'flex flex-col w-full p-0' 
+          }
+        }).then(async (result) => {
+          if (result.isConfirmed) {
+            const selectedDate = document.getElementById('bulk-date-select').value;
+            const clients = usersDb.filter(u => u.role === 'client');
+
+            if (clients.length === 0) {
+              return Swal.fire({ icon: 'warning', title: 'Gagal', text: 'Tidak ada data siswa/client yang terdaftar untuk dimasukkan.', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+            }
+
+            Swal.fire({
+              html: '<div class="flex flex-col items-center py-2"><div class="w-10 h-10 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin mb-4"></div><p class="text-slate-600 font-bold text-sm">Menyiapkan Rekaman Data...</p></div>',
+              allowOutsideClick: false, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-xs' }
+            });
+
+            try {
+              let newRecords = [];
+              const timeInDefault = settingsDb.jamMasuk || "08:00";
+              const timeOutDefault = settingsDb.jamPulang || "17:00";
+
+              for (const client of clients) {
+                const recId = Date.now() + Math.floor(Math.random() * 1000) + client.id;
+                const newRecord = {
+                  id: recId,
+                  userId: client.id,
+                  date: selectedDate,
+                  timeIn: timeInDefault,
+                  timeOut: timeOutDefault,
+                  status: 'Hadir'
+                };
+                
+                await window.fs.setDoc(window.fs.doc(window.db, "attendance", recId.toString()), newRecord);
+                newRecords.push(newRecord);
+              }
+
+              setAttendanceDb(prev => [...prev, ...newRecords]);
+              Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Presensi massal sukses ditambahkan.', timer: 1800, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+            } catch (err) {
+              console.error(err);
+              Swal.fire('Error', 'Gagal memproses data kehadiran massal.', 'error');
+            }
+          }
+        });
+      };
+
+      const performPresensi = async (tipe) => {
+        const todayStr = getLocalYYYYMMDD(currentTime);
+        const day = currentTime.getDay();
+        const isLiburMinggu = String(settingsDb.liburMinggu).toLowerCase() === 'true';
+        const isLiburSabtu = String(settingsDb.liburSabtu).toLowerCase() === 'true';
+
+        if ((isLiburMinggu && day === 0) || (isLiburSabtu && day === 6)) return Swal.fire({ title: 'Hari Libur', text:'Hari ini ditetapkan sebagai hari libur.', icon:'info', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }});
+        if (holidaysDb.find(h => h.date === todayStr)) return Swal.fire({ title: 'Hari Libur', text:'Hari ini adalah tanggal merah.', icon:'info', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }});
+
+        const executePresensi = async () => {
+          const time = currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          
+          if (tipe === 'masuk') {
+            let late = false;
+            if (String(settingsDb.useTime).toLowerCase() === 'true') {
+              const b = settingsDb.jamMasuk.split(':'), a = time.split(':');
+              late = parseInt(a[0]) > parseInt(b[0]) || (a[0] === b[0] && parseInt(a[1]) > parseInt(b[1]));
+            }
+            
+            let existingUserRec = attendanceDb.find(a => a.userId === user?.id && a.date === todayStr);
+            let updatedRec;
+
+            if (existingUserRec) {
+                updatedRec = { ...existingUserRec, timeIn: time, status: late ? 'Terlambat' : 'Hadir' };
+                await window.fs.updateDoc(window.fs.doc(window.db, "attendance", updatedRec.id.toString()), { timeIn: time, status: updatedRec.status });
+            } else {
+                updatedRec = { id: Date.now(), userId: user?.id, date: todayStr, timeIn: time, timeOut: null, status: late ? 'Terlambat' : 'Hadir' };
+                await window.fs.setDoc(window.fs.doc(window.db, "attendance", updatedRec.id.toString()), updatedRec);
+            }
+
+            const newPlaceholders = await ensureAllClientsHaveRecord(todayStr, user?.id);
+            const filteredDb = attendanceDb.filter(a => a.id !== (existingUserRec ? existingUserRec.id : null));
+            setAttendanceDb([...filteredDb, updatedRec, ...newPlaceholders]);
+
+            Swal.fire({ icon: 'success', title: 'Berhasil Masuk', text: `Presensi dicatat pukul ${time}`, timer: 2000, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+          
+          } else {
+            const activeRec = attendanceDb.find(a => a.userId === user?.id && a.date === todayStr && a.status !== 'Menunggu');
+            if(activeRec) {
+                const up = attendanceDb.map(r => r.id === activeRec.id ? {...r, timeOut: time} : r);
+                setAttendanceDb(up);
+                await window.fs.updateDoc(window.fs.doc(window.db, "attendance", activeRec.id.toString()), { timeOut: time });
+                Swal.fire({ icon: 'success', title: 'Berhasil Pulang', text: `Sampai jumpa! Dicatat pukul ${time}`, timer: 2000, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+            }
+          }
+        };
+
+        if (String(settingsDb.useLocation).toLowerCase() === 'true') {
+          if (!settingsDb.lokasi || settingsDb.lokasi.includes('Memuat')) return Swal.fire({title: 'Error Konfigurasi', text:'Lokasi kantor belum diset.', icon:'warning', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }});
+          setIsLocating(true);
+          navigator.geolocation.getCurrentPosition(pos => {
+            const off = settingsDb.lokasi.split(',');
+            const dist = calculateDistance(pos.coords.latitude, pos.coords.longitude, parseFloat(off[0]), parseFloat(off[1]));
+            setIsLocating(false);
+            if (dist > 100) return Swal.fire({ icon: 'error', title: 'Di Luar Jangkauan', html: `Jarak Anda <b>${Math.round(dist)} meter</b> dari lokasi.<br><span class="text-sm">(Maksimal: 100 meter)</span>`, confirmButtonColor: '#ef4444', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+            executePresensi();
+          }, err => { setIsLocating(false); Swal.fire({title: 'GPS Error', text:'Pastikan GPS menyala.', icon:'error', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }}); }, { enableHighAccuracy: true });
+        } else executePresensi();
+      };
+
+      const performIzinSakit = (tipe) => {
+        const todayStr = getLocalYYYYMMDD(currentTime);
+        const day = currentTime.getDay();
+        const isLiburMinggu = String(settingsDb.liburMinggu).toLowerCase() === 'true';
+        const isLiburSabtu = String(settingsDb.liburSabtu).toLowerCase() === 'true';
+
+        if ((isLiburMinggu && day === 0) || (isLiburSabtu && day === 6)) return Swal.fire({ title: 'Hari Libur', text:'Hari ini ditetapkan libur.', icon:'info', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }});
+        if (holidaysDb.find(h => h.date === todayStr)) return Swal.fire({ title: 'Hari Libur', text:'Hari ini tanggal merah.', icon:'info', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }});
+
+        Swal.fire({
+          title: `Pengajuan ${tipe}`, text: `Anda akan tercatat ${tipe} untuk hari ini. Lanjutkan?`, icon: 'question',
+          showCancelButton: true, confirmButtonColor: '#3b82f6', cancelButtonColor: '#94a3b8', confirmButtonText: 'Ya, Lanjutkan', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }
+        }).then(async res => {
+          if (res.isConfirmed) {
+            const time = currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            let existingUserRec = attendanceDb.find(a => a.userId === user?.id && a.date === todayStr);
+            let updatedRec;
+
+            if (existingUserRec) {
+                updatedRec = { ...existingUserRec, timeIn: time, timeOut: '-', status: tipe };
+                await window.fs.updateDoc(window.fs.doc(window.db, "attendance", updatedRec.id.toString()), { timeIn: time, timeOut: '-', status: tipe });
+            } else {
+                updatedRec = { id: Date.now(), userId: user?.id, date: todayStr, timeIn: time, timeOut: '-', status: tipe };
+                await window.fs.setDoc(window.fs.doc(window.db, "attendance", updatedRec.id.toString()), updatedRec);
+            }
+
+            const newPlaceholders = await ensureAllClientsHaveRecord(todayStr, user?.id);
+            const filteredDb = attendanceDb.filter(a => a.id !== (existingUserRec ? existingUserRec.id : null));
+            setAttendanceDb([...filteredDb, updatedRec, ...newPlaceholders]);
+
+            Swal.fire({ icon: 'success', title: 'Berhasil', text: `Status ${tipe} berhasil dicatat.`, timer: 2000, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+          }
+        });
+      };
+
+      const handleGenerateVerif = async () => {
+        Swal.fire({
+          html: '<div class="flex flex-col items-center py-2"><div class="w-10 h-10 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin mb-4"></div><p class="text-slate-600 font-bold text-sm">Membuat Tautan Verifikasi Resmi...</p></div>',
+          allowOutsideClick: false, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-xs' }
+        });
+
+        try {
+          const [yearStr, monthStr] = filterMonth.split('-');
+          const vid = `${yearStr}${monthStr}-${Date.now().toString(16).substring(4).toUpperCase()}`;
+          
+          let baseUrl = settingsDb.appScriptUrl || (window.location.origin + window.location.pathname);
+          if (baseUrl.endsWith('index.html')) {
+            baseUrl = baseUrl.replace('index.html', '');
+          }
+          if (!baseUrl.endsWith('/')) baseUrl += '/';
+          
+          const verificationUrl = `${baseUrl}verification.html?vid=${vid}`;
+          
+          const newVerif = {
+            id: Date.now(),
+            month: filterMonth,
+            vid: vid,
+            url: verificationUrl
+          };
+
+          await window.fs.setDoc(window.fs.doc(window.db, "verifications", newVerif.id.toString()), newVerif);
+          setVerificationsDb(prev => [...prev, newVerif]);
+          
+          Swal.fire({
+            icon: 'success',
+            title: 'Berhasil!',
+            text: 'Tautan verifikasi bulan ini telah berhasil dibuat.',
+            timer: 1500,
+            showConfirmButton: false,
+            customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }
+          });
+        } catch (error) {
+          console.error(error);
+          Swal.fire('Error', 'Gagal membuat tautan verifikasi resmi.', 'error');
+        }
+      };
+
+      const handleDownloadPDF = async () => {
+        const defaultDate = currentTime.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+        const defaultCity = settingsDb.kotaKabupaten || '';
+
+        Swal.fire({
+          title: '<h2 class="text-xl font-bold text-slate-800">Pengaturan Cetak</h2>',
+          html: `
+            <div class="text-left mt-4 space-y-4">
+              <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Kota Tanda Tangan</label>
+                <input type="text" id="pdfCity" class="w-full bg-transparent outline-none font-bold text-slate-700 text-sm" value="${defaultCity}" placeholder="Cth: Jember">
+              </div>
+              <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Tanggal Cetak</label>
+                <input type="text" id="pdfDate" class="w-full bg-transparent outline-none font-bold text-slate-700 text-sm" value="${defaultDate}">
+              </div>
+            </div>
+          `,
+          showCancelButton: true, confirmButtonText: 'Unduh Sekarang', cancelButtonText: 'Batal', buttonsStyling: false,
+          customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-md', confirmButton: 'w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all mb-2', cancelButton: 'w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 px-4 rounded-xl transition-all', actions: 'flex flex-col w-full px-4 pb-4' },
+          preConfirm: () => { return { city: document.getElementById('pdfCity').value, date: document.getElementById('pdfDate').value } }
+        }).then((result) => {
+          if (result.isConfirmed) {
+            Swal.fire({ html: '<div class="flex flex-col items-center py-2"><div class="w-10 h-10 border-4 border-slate-100 border-t-red-500 rounded-full animate-spin mb-4"></div><p class="text-slate-600 font-bold text-sm">Menyiapkan PDF...</p></div>', showConfirmButton: false, allowOutsideClick: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-xs' } });
+
+            setTimeout(() => {
+              try {
+                const { city, date } = result.value;
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({ orientation: 'landscape', format: [210, 330] });
+
+                const [yearStr, monthStr] = filterMonth.split('-');
+                const year = parseInt(yearStr);
+                const monthIndex = parseInt(monthStr) - 1; 
+                const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+                const datesWithActivity = new Set(attendanceDb.map(a => a.date));
+
+                const head = [['No', 'Nama Lengkap']];
+                for (let i = 1; i <= daysInMonth; i++) head[0].push(i.toString()); 
+                head[0].push('H', 'I', 'S', 'A');
+
+                const colStyles = { 0: { halign: 'center', cellWidth: 8 }, 1: { halign: 'left' } };
+                for (let i = 1; i <= daysInMonth; i++) colStyles[i + 1] = { halign: 'center', cellWidth: 7.2 }; 
+                
+                const body = [];
+                const clients = usersDb.filter(u => u.role === 'client');
+
+                clients.forEach((client, index) => {
+                  const clientNameNim = client.name + '\n' + (client.nim || '-');
+                  const row = [index + 1, clientNameNim];
+                  let totalHadir = 0, totalIzin = 0, totalSakit = 0, totalAlpa = 0;
+
+                  for (let d = 1; d <= daysInMonth; d++) {
+                    const dayDate = new Date(year, monthIndex, d);
+                    const dateStr = getLocalYYYYMMDD(dayDate);
+                    const dayOfWeek = dayDate.getDay();
+                    const isLiburMinggu = String(settingsDb.liburMinggu).toLowerCase() === 'true';
+                    const isLiburSabtu = String(settingsDb.liburSabtu).toLowerCase() === 'true';
+                    const isRoutineHoliday = (dayOfWeek === 0 && isLiburMinggu) || (dayOfWeek === 6 && isLiburSabtu);
+                    const isSpecialHoliday = holidaysDb.find(h => h.date === dateStr);
+
+                    const record = attendanceDb.find(a => a.userId === client.id && a.date === dateStr);
+                    const hasActivityOnDate = datesWithActivity.has(dateStr); 
+
+                    if (record) {
+                      if (record.status === 'Hadir' || record.status === 'Terlambat') { row.push(record.status === 'Hadir' ? 'H' : 'T'); totalHadir++; }
+                      else if (record.status === 'Izin') { row.push('I'); totalIzin++; }
+                      else if (record.status === 'Sakit') { row.push('S'); totalSakit++; }
+                      else if (record.status === 'Alpa') { row.push('A'); totalAlpa++; }
+                      else { row.push(''); } 
+                    } else {
+                      if (isRoutineHoliday || isSpecialHoliday) row.push('L');
+                      else {
+                         if (dayDate <= new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate())) {
+                            if (hasActivityOnDate) { row.push('A'); totalAlpa++; } else row.push('');
+                         } else row.push('');
+                      }
+                    }
+                  }
+                  row.push(totalHadir.toString(), totalIzin.toString(), totalSakit.toString(), totalAlpa.toString());
+                  body.push(row);
+                });
+
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const monthName = new Date(year, monthIndex).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+                
+                let currentY = 14;
+
+                if (settingsDb.namaKegiatan && settingsDb.namaKegiatan.trim() !== '') {
+                  doc.setFontSize(14).setFont("helvetica", "bold").setTextColor(15, 23, 42); 
+                  const splitKegiatan = doc.splitTextToSize(settingsDb.namaKegiatan.toUpperCase(), 200);
+                  doc.text(splitKegiatan, 8, currentY);
+                  currentY += (splitKegiatan.length * 5); 
+                }
+
+                doc.setFontSize(14).setFont("helvetica", "bold").setTextColor(15, 23, 42); 
+                const splitInstansi = doc.splitTextToSize((settingsDb.namaInstansi || '').toUpperCase(), 200);
+                doc.text(splitInstansi, 8, currentY);
+                currentY += (splitInstansi.length * 5) + 2; 
+
+                const addressParts = [settingsDb.alamat, settingsDb.desaKecamatan, settingsDb.kotaKabupaten, settingsDb.negara, settingsDb.kodePos].filter(Boolean).join(', ');
+                if (addressParts) {
+                  doc.setFontSize(8).setFont("helvetica", "normal").setTextColor(100, 100, 100);
+                  const splitAddress = doc.splitTextToSize(addressParts, 130); 
+                  doc.text(splitAddress, 8, currentY);
+                  currentY += (splitAddress.length * 4); 
+                }
+                const rightTextX = pageWidth - 28;
+                doc.setFontSize(12).setFont("helvetica", "bold").setTextColor(15, 23, 42).text("LAPORAN REKAPITULASI PRESENSI", rightTextX, 14, { align: 'right' });
+                doc.setFontSize(9).setFont("helvetica", "normal").setTextColor(71, 85, 105).text(`Periode: ${monthName}`, rightTextX, 19, { align: 'right' });
+                
+                const currentVerifMatch = verificationsDb.find(v => v.month === filterMonth);
+                const docId = currentVerifMatch ? currentVerifMatch.vid : `${year}${monthStr}-${Date.now().toString(16).substring(4).toUpperCase()}`;
+                doc.setFontSize(8).setFont("helvetica", "bold").setTextColor(100, 100, 100).text(`ID DOKUMEN: ${docId}`, rightTextX, 23, { align: 'right' });
+
+                const lineY = Math.max(29, currentY + 3); 
+                doc.setLineWidth(0.5).setDrawColor(226, 232, 240).line(8, lineY, pageWidth - 8, lineY);
+
+                doc.autoTable({
+                  startY: lineY + 4, margin: { left: 8, right: 8 }, head: head, body: body, theme: 'grid',
+                  styles: { fontSize: 7.5, halign: 'center', valign: 'middle', cellPadding: 1.5, lineColor: [0, 0, 0], lineWidth: 0.1 },
+                  headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', lineColor: [0, 0, 0], lineWidth: 0.1 },
+                  columnStyles: colStyles,
+                  didParseCell: function(data) {
+                     const isColumnDate = data.column.index > 1 && data.column.index <= daysInMonth + 1;
+                     let isHolidayCol = false;
+                     if (isColumnDate) {
+                        const dayDate = new Date(year, monthIndex, data.column.index - 1);
+                        const dateStr = getLocalYYYYMMDD(dayDate);
+                        const dayOfWeek = dayDate.getDay();
+                        const isLiburMinggu = String(settingsDb.liburMinggu).toLowerCase() === 'true';
+                        const isLiburSabtu = String(settingsDb.liburSabtu).toLowerCase() === 'true';
+                        isHolidayCol = (dayOfWeek === 0 && isLiburMinggu) || (dayOfWeek === 6 && isLiburSabtu) || holidaysDb.find(h => h.date === dateStr);
+                     }
+                     if (data.section === 'head') {
+                       data.cell.styles.fillColor = [255, 255, 255]; 
+                       data.cell.styles.textColor = isHolidayCol ? [220, 38, 38] : [0, 0, 0];
+                     }
+                     if (data.section === 'body') {
+                       if (data.column.index === 0 || data.column.index === 1) { 
+                          data.cell.styles.textColor = [15, 23, 42]; 
+                          data.cell.styles.fontStyle = 'bold'; 
+                          data.cell.styles.fontSize = 8.5; 
+                       }
+                       if (isColumnDate) {
+                         const val = data.cell.raw;
+                         if (val === 'H') { data.cell.styles.textColor = [21, 128, 61]; data.cell.styles.fontStyle = 'bold'; }
+                         else if (val === 'T') { data.cell.styles.textColor = [234, 88, 12]; data.cell.styles.fontStyle = 'bold'; }
+                         else if (val === 'I') { data.cell.styles.textColor = [147, 51, 234]; data.cell.styles.fontStyle = 'bold'; }
+                         else if (val === 'S') { data.cell.styles.textColor = [234, 179, 8]; data.cell.styles.fontStyle = 'bold'; }
+                         else if (val === 'A') { data.cell.styles.textColor = [220, 38, 38]; data.cell.styles.fontStyle = 'bold'; }
+                         else if (val === 'L' || isHolidayCol) { data.cell.styles.textColor = [255, 255, 255]; data.cell.styles.fillColor = [220, 38, 38]; data.cell.styles.fontStyle = 'bold'; }
+                       } else if (data.column.index >= daysInMonth + 2) {
+                          if (data.column.index === daysInMonth + 2) data.cell.styles.textColor = [21, 128, 61]; 
+                          if (data.column.index === daysInMonth + 3) data.cell.styles.textColor = [147, 51, 234]; 
+                          if (data.column.index === daysInMonth + 4) data.cell.styles.textColor = [234, 179, 8]; 
+                          if (data.column.index === daysInMonth + 5) data.cell.styles.textColor = [220, 38, 38]; 
+                       }
+                     }
+                  }
+                });
+
+                const finalY = doc.lastAutoTable.finalY || 28;
+                doc.setFontSize(8).setTextColor(100, 100, 100);
+                doc.text("Keterangan: H (Hadir), T (Terlambat), I (Izin), S (Sakit), A (Alpa/Tidak Hadir), L (Libur)", 14, finalY + 6);
+
+                doc.setFontSize(10).setTextColor(0, 0, 0);
+                let signatureY = finalY + 35; 
+                
+                let pjs = [];
+                try { pjs = JSON.parse(settingsDb.penanggungJawab || "[]"); } catch(e) {}
+                if (pjs.length === 0) pjs = [{jabatan: 'Penanggung Jawab', nama: '...................................', nip: 'NIP/NIM.'}];
+
+                const nPjs = pjs.length;
+                const totalRows = Math.ceil(nPjs / 2);
+                const colLeftX = pageWidth * 0.25;
+                const colRightX = pageWidth * 0.75;
+                const colCenterX = pageWidth * 0.5;
+
+                const mengetahuiX = (nPjs === 1) ? colCenterX : colRightX;
+                const locationDateText = city ? `${city}, ${date}` : date;
+                doc.text(locationDateText, mengetahuiX, signatureY - 14, { align: "center" });
+                doc.text("Mengetahui,", mengetahuiX, signatureY - 8, { align: "center" });
+
+                pjs.forEach((pj, idx) => {
+                   let row, colX;
+                   if (nPjs % 2 !== 0) { 
+                      if (idx === 0) {
+                         row = totalRows - 1; 
+                         colX = colCenterX;   
+                      } else {
+                         let pairIndex = Math.ceil(idx / 2);
+                         row = totalRows - 1 - pairIndex;                
+                         colX = (idx % 2 === 1) ? colRightX : colLeftX; 
+                      }
+                   } else { 
+                      let pairIndex = Math.floor(idx / 2);
+                      row = totalRows - 1 - pairIndex;               
+                      colX = (idx % 2 === 0) ? colRightX : colLeftX; 
+                   }
+
+                   const currentY = signatureY + (row * 35);
+                   doc.setFont("helvetica", "normal").text(pj.jabatan || "...................................", colX, currentY, { align: "center" });
+                   doc.setFont("helvetica", "bold").text(pj.nama || "...................................", colX, currentY + 20, { align: "center" });
+                   doc.setFont("helvetica", "normal").text(pj.nip || "NIP/NIM. ", colX, currentY + 25, { align: "center" });
+                });
+
+                const savePDF = () => {
+                   doc.save("Rekap_Presensi_" + filterMonth + ".pdf");
+                   Swal.close();
+                };
+
+                if (currentVerifMatch && currentVerifMatch.url) {
+                   const qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&margin=1&data=" + encodeURIComponent(currentVerifMatch.url);
+                   const img = new Image();
+                   img.crossOrigin = "Anonymous";
+                   img.onload = function() {
+                       const canvas = document.createElement('canvas');
+                       canvas.width = img.width; canvas.height = img.height;
+                       const ctx = canvas.getContext('2d');
+                       ctx.drawImage(img, 0, 0);
+                       const dataURL = canvas.toDataURL('image/png');
+                       doc.addImage(dataURL, 'PNG', pageWidth - 26, 8, 18, 18);
+                       savePDF();
+                   };
+                   img.onerror = () => savePDF();
+                   img.src = qrUrl;
+                } else {
+                   savePDF(); 
+                }
+              } catch (error) {
+                console.error(error);
+                Swal.fire('Error', 'Gagal memproses file PDF.', 'error');
+              }
+            }, 100);
+          }
+        });
+      };
+
+      const handleLogout = () => {
+        Swal.fire({
+          title: 'Keluar Sistem?',
+          icon: 'question',
+          showCancelButton: true,
+          confirmButtonColor: '#ef4444',
+          cancelButtonColor: '#94a3b8',
+          confirmButtonText: 'Ya, Keluar',
+          cancelButtonText: 'Batal',
+          customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }
+        }).then((result) => {
+          if (result.isConfirmed) {
+            setUser(null);
+            setIsDataReady(false);
+            try {
+              localStorage.removeItem('presensi_user'); 
+              localStorage.removeItem('presensi_menu'); 
+            } catch(e) {}
+          }
+        });
+      };
+
+      const handleAddUser = async (e) => {
+        e.preventDefault();
+        if(!newUser.name || !newUser.username) return;
+        const added = { ...newUser, id: Date.now(), role: 'client' };
+        
+        await window.fs.setDoc(window.fs.doc(window.db, "users", added.id.toString()), added);
+        setUsersDb(prev => [...prev, added]);
+        setNewUser({ name: '', username: '', nim: '' });
+        Swal.fire({ icon: 'success', title: 'Tersimpan', text: 'Data client berhasil ditambahkan.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+      };
+
+      const handleEditUser = (clientObj) => {
+        Swal.fire({
+          title: '<h2 class="text-xl font-bold text-slate-800">Update Data Client</h2>',
+          html: `
+            <div class="text-left mt-2 space-y-3">
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Nama Lengkap</label>
+                <input type="text" id="swal-n" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" value="${clientObj.name}">
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Username Login</label>
+                <input type="text" id="swal-u" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" value="${clientObj.username}">
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">NIM</label>
+                <input type="text" id="swal-nim" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" value="${clientObj.nim || ''}">
+              </div>
+            </div>
+          `,
+          showCancelButton: true,
+          confirmButtonText: 'Update Data',
+          cancelButtonText: 'Batal',
+          buttonsStyling: false,
+          customClass: { 
+            popup: 'swal2-minimalist-popup w-[90%] max-w-sm',
+            confirmButton: 'w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all mb-2 mt-4',
+            cancelButton: 'w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 px-4 rounded-xl transition-all',
+            actions: 'flex flex-col w-full p-0'
+          },
+          preConfirm: () => {
+            return {
+              ...clientObj,
+              name: document.getElementById('swal-n').value,
+              username: document.getElementById('swal-u').value,
+              nim: document.getElementById('swal-nim').value
+            }
+          }
+        }).then(async (result) => {
+          if (result.isConfirmed) {
+            await window.fs.setDoc(window.fs.doc(window.db, "users", result.value.id.toString()), result.value);
+            setUsersDb(prev => prev.map(u => u.id === clientObj.id ? result.value : u));
+            Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Data client diperbarui.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+          }
+        });
+      };
+
+      const handleDeleteUser = (id) => {
+        Swal.fire({
+          title: 'Hapus Client?', text: "Data client tidak dapat dikembalikan!", icon: 'warning',
+          showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#94a3b8', confirmButtonText: 'Ya, Hapus!', cancelButtonText: 'Batal', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }
+        }).then(async (result) => {
+          if (result.isConfirmed) {
+            await window.fs.deleteDoc(window.fs.doc(window.db, "users", id.toString()));
+            setUsersDb(prev => prev.filter(u => u.id !== id));
+            Swal.fire({ icon: 'success', title: 'Terhapus!', text: 'Data client telah dihapus.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+          }
+        });
+      };
+
+      const handleEditAttendance = (record) => {
+        Swal.fire({
+          title: '<h2 class="text-xl font-bold text-slate-800">Update Presensi</h2>',
+          html: `
+            <div class="text-left mt-2 space-y-3">
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Status Kehadiran</label>
+                <select id="swal-s" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm">
+                  <option value="Hadir" ${record.status === 'Hadir' ? 'selected' : ''}>Hadir</option>
+                  <option value="Terlambat" ${record.status === 'Terlambat' ? 'selected' : ''}>Terlambat</option>
+                  <option value="Izin" ${record.status === 'Izin' ? 'selected' : ''}>Izin</option>
+                  <option value="Sakit" ${record.status === 'Sakit' ? 'selected' : ''}>Sakit</option>
+                  <option value="Alpa" ${record.status === 'Alpa' ? 'selected' : ''}>Alpa</option>
+                  <option value="Menunggu" ${record.status === 'Menunggu' ? 'selected' : ''}>Menunggu (Kosong)</option>
+                </select>
+              </div>
+              <div class="flex gap-3">
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 w-1/2">
+                  <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Jam Masuk</label>
+                  <input type="time" id="swal-in" class="w-full bg-transparent outline-none font-bold text-slate-700 text-sm" value="${formatTimeForInput(record.timeIn)}">
+                </div>
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 w-1/2">
+                  <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Jam Pulang</label>
+                  <input type="time" id="swal-out" class="w-full bg-transparent outline-none font-bold text-slate-700 text-sm" value="${formatTimeForInput(record.timeOut)}">
+                </div>
+              </div>
+            </div>
+          `,
+          showCancelButton: true, confirmButtonText: 'Update Data', cancelButtonText: 'Batal', buttonsStyling: false,
+          customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-md', confirmButton: 'w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all mb-2 mt-4', cancelButton: 'w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 px-4 rounded-xl transition-all', actions: 'flex flex-col w-full p-0' },
+          preConfirm: () => { return { ...record, status: document.getElementById('swal-s').value, timeIn: document.getElementById('swal-in').value, timeOut: document.getElementById('swal-out').value } }
+        }).then(async (result) => {
+          if (result.isConfirmed) {
+            await window.fs.setDoc(window.fs.doc(window.db, "attendance", result.value.id.toString()), result.value);
+            setAttendanceDb(prev => prev.map(a => a.id === record.id ? result.value : a));
+            Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Riwayat presensi diperbarui.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+          }
+        });
+      };
+
+      const handleDeleteAttendance = (id) => {
+        Swal.fire({
+          title: 'Hapus Presensi?', text: "Data tidak dapat dikembalikan!", icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#94a3b8', confirmButtonText: 'Ya, Hapus!', cancelButtonText: 'Batal', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }
+        }).then(async (result) => {
+          if (result.isConfirmed) {
+            await window.fs.deleteDoc(window.fs.doc(window.db, "attendance", id.toString()));
+            setAttendanceDb(prev => prev.filter(a => a.id !== id));
+            Swal.fire({ icon: 'success', title: 'Terhapus!', text: 'Riwayat presensi dihapus.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+          }
+        });
+      };
+
+      const ensureAllClientsHaveRecord = async (todayStr, skipUserId) => {
+          const clients = usersDb.filter(u => u.role === 'client');
+          let additions = [];
+          for (const client of clients) {
+              if (client.id === skipUserId) continue;
+              const hasRec = attendanceDb.some(a => a.userId === client.id && a.date === todayStr) || additions.some(a => a.userId === client.id);
+              if (!hasRec) {
+                  const pRec = { id: Date.now() + client.id, userId: client.id, date: todayStr, timeIn: '-', timeOut: '-', status: 'Menunggu' };
+                  additions.push(pRec);
+                  window.fs.setDoc(window.fs.doc(window.db, "attendance", pRec.id.toString()), pRec).catch(e => console.error(e));
+              }
+          }
+          return additions;
+      };
+
+      const todayStr = getLocalYYYYMMDD(currentTime);
+      const todayRec = attendanceDb.find(a => a.userId === user?.id && a.date === todayStr);
+      const activeRec = todayRec && todayRec.status !== 'Menunggu' ? todayRec : null;
+      
+      const filteredAttendanceData = attendanceDb.filter(a => a.date.startsWith(filterMonth));
+      const currentVerif = verificationsDb.find(v => v.month === filterMonth);
+      const hasData = filteredAttendanceData.length > 0;
+
+      const availableMonthsOptions = useMemo(() => {
+        const monthsSet = new Set();
+        attendanceDb.forEach(a => {
+          if (a.date && a.date.length >= 7) {
+            monthsSet.add(a.date.substring(0, 7));
+          }
+        });
+        
+        const currentYearMonth = todayStr.substring(0, 7);
+        monthsSet.add(currentYearMonth);
+        
+        return Array.from(monthsSet).sort().reverse().map(ym => {
+          const [year, month] = ym.split('-');
+          const labelName = new Date(parseInt(year), parseInt(month) - 1, 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+          return { value: ym, label: labelName };
+        });
+      }, [attendanceDb, todayStr]);
+
+      const todayAttendanceList = useMemo(() => {
+        return usersDb.filter(u => u.role === 'client').map(client => {
+          const record = attendanceDb.find(a => a.userId === client.id && a.date === todayStr);
+          return {
+            ...client,
+            timeIn: record ? record.timeIn : '-',
+            timeOut: record ? record.timeOut || '-' : '-',
+            status: record ? record.status : 'Belum Absen'
+          };
+        });
+      }, [usersDb, attendanceDb, todayStr]);
+
+      const monthlyClientSummaries = useMemo(() => {
+        const [yearStr, monthStr] = filterMonth.split('-');
+        const year = parseInt(yearStr);
+        const monthIndex = parseInt(monthStr) - 1;
+        const totalDaysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+        
+        const activeDatesInMonth = new Set(attendanceDb.filter(a => a.date.startsWith(filterMonth)).map(a => a.date));
+
+        return usersDb.filter(u => u.role === 'client').map(client => {
+          let countHadir = 0, countIzin = 0, countSakit = 0, countAlpa = 0;
+          const recordsThisMonth = attendanceDb.filter(a => a.userId === client.id && a.date.startsWith(filterMonth));
+
+          for (let d = 1; d <= totalDaysInMonth; d++) {
+            const loopDateObj = new Date(year, monthIndex, d);
+            const dateStr = getLocalYYYYMMDD(loopDateObj);
+            const dayOfWeek = loopDateObj.getDay();
+
+            const isLiburMinggu = String(settingsDb.liburMinggu).toLowerCase() === 'true';
+            const isLiburSabtu = String(settingsDb.liburSabtu).toLowerCase() === 'true';
+            const isRoutineHoliday = (dayOfWeek === 0 && isLiburMinggu) || (dayOfWeek === 6 && isLiburSabtu);
+            const isSpecialHoliday = holidaysDb.some(h => h.date === dateStr);
+
+            const matchRecord = recordsThisMonth.find(r => r.date === dateStr);
+
+            if (matchRecord) {
+              if (['Hadir', 'Terlambat'].includes(matchRecord.status)) countHadir++;
+              else if (matchRecord.status === 'Izin') countIzin++;
+              else if (matchRecord.status === 'Sakit') countSakit++;
+              else if (matchRecord.status === 'Alpa') countAlpa++;
+            } else {
+              if (!isRoutineHoliday && !isSpecialHoliday && loopDateObj <= new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate())) {
+                if (activeDatesInMonth.has(dateStr)) countAlpa++;
+              }
+            }
+          }
+
+          return {
+            ...client,
+            hadir: countHadir,
+            izin: countIzin,
+            sakit: countSakit,
+            alpa: countAlpa
+          };
+        });
+      }, [usersDb, attendanceDb, holidaysDb, settingsDb, filterMonth, currentTime]);
+
+      if (isSystemEmpty) return (
+        <div className="h-screen flex items-center justify-center p-4 bg-slate-100 relative overflow-hidden">
+          <div className="bg-white p-8 md:p-10 rounded-3xl shadow-xl w-full max-w-md border border-slate-100 relative z-10">
+            <div className="text-center mb-6">
+              <div className="bg-emerald-600 w-16 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-emerald-100">
+                <i className="fas fa-shield-alt text-white text-2xl"></i>
+              </div>
+              <h1 className="text-xl font-bold text-slate-800 tracking-tight">Pendaftaran Admin Utama</h1>
+              <p className="text-slate-400 mt-1 text-xs font-semibold">Sistem baru terdeteksi. Silakan daftarkan akun Admin Utama Anda.</p>
+            </div>
+            <form onSubmit={handleRegisterAdmin} className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 ml-1">Nama Lengkap Admin</label>
+                <input type="text" required value={regForm.name} onChange={e=>setRegForm({...regForm, name:e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-emerald-500 focus:outline-none transition-all font-medium text-slate-700 text-sm" placeholder="Contoh: Fahmi Professional" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 ml-1">Username Login Admin</label>
+                <input type="text" required value={regForm.username} onChange={e=>setRegForm({...regForm, username:e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-emerald-500 focus:outline-none transition-all font-bold text-slate-700 text-sm" placeholder="Contoh: masteradmin" />
+              </div>
+              <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-emerald-200 transition-all text-sm mt-4">Daftar & Amankan Sistem</button>
+            </form>
+          </div>
+        </div>
+      );
+
+      if (!user) return (
+        <div className="h-screen flex items-center justify-center p-4 bg-slate-100 relative overflow-hidden">
+          <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+          <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+          
+          <div className="bg-white p-8 md:p-10 rounded-3xl shadow-xl w-full max-w-sm border border-slate-100 relative z-10">
+            <div className="text-center mb-8">
+              <div className="bg-blue-600 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 rotate-3 shadow-blue-200 shadow-xl">
+                <i className="fas fa-fingerprint text-white text-4xl -rotate-3"></i>
+              </div>
+              <h1 className="text-2xl font-bold text-slate-800 tracking-tight leading-tight">{settingsDb.namaInstansi || 'Memuat...'}</h1>
+              <p className="text-slate-400 mt-1 font-semibold uppercase tracking-widest text-[10px]">Sistem Presensi PPL 2</p>
+            </div>
+            <div className="space-y-5">
+              <input type="text" id="logU" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all font-semibold text-slate-700 placeholder-slate-400 text-sm" placeholder="Masukkan Username..." onKeyDown={e => e.key === 'Enter' && handleLoginClick(e.target.value)} />
+              <button onClick={() => handleLoginClick(document.getElementById('logU').value)} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-200/50 transition-all transform active:scale-[0.98] text-sm">Masuk Sistem</button>
+            </div>
+          </div>
+        </div>
+      );
+
+      if (!isDataReady) return null; 
+
+      return (
+        <div className="flex flex-col lg:flex-row h-screen overflow-hidden">
+          
+          <nav className="lg:hidden w-full bg-slate-900 text-white p-3 shadow-xl z-30 shrink-0">
+            <div className="flex items-center justify-between mb-3 px-2 border-b border-slate-800 pb-3">
+               <div className="flex items-center space-x-2.5">
+                 <div className="bg-blue-600 p-2 rounded-lg shadow-inner shadow-blue-400/20"><i className="fas fa-fingerprint text-xs text-white"></i></div>
+                 <h2 className="text-sm font-black tracking-tight uppercase">Sistem Presensi PPL 2</h2>
+               </div>
+               
+               <div className="flex items-center space-x-3">
+                 <div className="text-right hidden xs:block sm:block">
+                   <p className="text-[10px] font-bold text-slate-200 leading-none">{user.name}</p>
+                   <p className="text-[8px] font-medium text-slate-500 uppercase tracking-widest mt-0.5">{user.role}</p>
+                 </div>
+                 
+                 <button onClick={handleLogout} className="flex items-center gap-1.5 border border-slate-700 bg-slate-800 hover:border-red-500/50 hover:bg-red-500/10 text-red-400 px-3 py-1.5 rounded-lg transition-all active:scale-[0.98] shadow-sm shrink-0">
+                   <i className="fas fa-power-off text-xs"></i>
+                   <span className="text-[9px] font-bold uppercase tracking-wider">Keluar</span>
+                 </button>
+               </div>
+            </div>
+            <div className={`grid gap-1 ${user.role === 'admin' ? 'grid-cols-5' : 'grid-cols-3'}`}>
+              <button onClick={() => changeMenu('dashboard')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='dashboard'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
+                <i className="fas fa-home text-base mb-1"></i><span className="text-[10px] font-bold uppercase">Beranda</span>
+              </button>
+              {user.role === 'client' && (
+                <>
+                  <button onClick={() => changeMenu('riwayat')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='riwayat'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
+                    <i className="fas fa-history text-base mb-1"></i><span className="text-[10px] font-bold uppercase">Riwayat</span>
+                  </button>
+                  <button onClick={() => changeMenu('kalender')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='kalender'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
+                    <i className="fas fa-calendar-alt text-base mb-1"></i><span className="text-[10px] font-bold uppercase">Kalender</span>
+                  </button>
+                </>
+              )}
+              {user.role === 'admin' && (
+                <>
+                  <button onClick={() => changeMenu('data client')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='data client'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
+                    <i className="fas fa-users text-base mb-1"></i><span className="text-[10px] font-bold uppercase">Client</span>
+                  </button>
+                  <button onClick={() => changeMenu('laporan')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='laporan'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
+                    <i className="fas fa-file-invoice text-base mb-1"></i><span className="text-[10px] font-bold uppercase">Laporan</span>
+                  </button>
+                  <button onClick={() => changeMenu('kalender')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='kalender'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
+                    <i className="fas fa-calendar-alt text-base mb-1"></i><span className="text-[10px] font-bold uppercase">Kalender</span>
+                  </button>
+                  <button onClick={() => changeMenu('profil')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='profil'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
+                    <i className="fas fa-building text-base mb-1"></i><span className="text-[10px] font-bold uppercase">Profil</span>
+                  </button>
+                </>
+              )}
+            </div>
+          </nav>
+
+          <aside className="hidden lg:flex w-64 bg-slate-900 text-white flex-col shadow-xl z-20 transition-all shrink-0">
+            <div className="p-6 border-b border-slate-800/80 flex items-center space-x-3">
+              <div className="bg-blue-500 p-2 rounded-lg"><i className="fas fa-fingerprint text-white text-lg"></i></div>
+              <h2 className="text-xl font-bold tracking-tight">Sistem Presensi PPL 2</h2>
+            </div>
+            
+            <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
+              <button onClick={() => changeMenu('dashboard')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'dashboard' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-home w-5 text-center"></i><span className="font-semibold text-sm">Dashboard</span></button>
+              
+              {user.role === 'client' && (
+                <>
+                  <button onClick={() => changeMenu('riwayat')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'riwayat' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-history w-5 text-center"></i><span className="font-semibold text-sm">Riwayat Presensi</span></button>
+                  <button onClick={() => changeMenu('kalender')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'kalender' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-calendar-alt w-5 text-center"></i><span className="font-semibold text-sm">Kalender</span></button>
+                </>
+              )}
+              
+              {user.role === 'admin' && <>
+                <button onClick={() => changeMenu('data client')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'data client' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-users w-5 text-center"></i><span className="font-semibold text-sm">Data Client</span></button>
+                <button onClick={() => changeMenu('laporan')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'laporan' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-file-invoice w-5 text-center"></i><span className="font-semibold text-sm">Laporan Presensi</span></button>
+                <button onClick={() => changeMenu('kalender')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'kalender' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-calendar-alt w-5 text-center"></i><span className="font-semibold text-sm">Kalender</span></button>
+                <button onClick={() => changeMenu('profil')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'profil' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-building w-5 text-center"></i><span className="font-semibold text-sm">Profil Instansi</span></button>
+              </>}
+            </nav>
+            
+            <div className="p-5 border-t border-slate-800/80">
+              <button onClick={handleLogout} className="w-full flex items-center justify-center space-x-2 bg-slate-800 hover:bg-red-500 hover:text-white text-slate-300 p-3 rounded-xl font-semibold text-sm transition-all"><i className="fas fa-power-off"></i><span>Keluar</span></button>
+            </div>
+          </aside>
+
+          <main className="flex-1 overflow-y-auto relative bg-slate-50/80">
+            <div className="p-4 md:p-8 max-w-6xl mx-auto min-h-full">
+              
+              <header className="flex flex-col md:flex-row md:justify-between items-start md:items-end mb-8 space-y-5 md:space-y-0">
+                <div className="w-full md:w-auto flex flex-col">
+                  <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight capitalize leading-none">{activeMenu.replace('-', ' ')}</h1>
+                  <div className="mt-4 bg-white border border-slate-200 rounded-xl py-2.5 px-3.5 shadow-sm inline-block w-full md:w-auto">
+                    <div className="flex flex-col gap-y-0.5">
+                      {settingsDb.namaKegiatan && settingsDb.namaKegiatan.trim() !== '' && (
+                        <div className="flex items-center text-blue-600">
+                          <div className="w-5 flex justify-center shrink-0 opacity-80 mr-2"><i className="fas fa-briefcase text-xs"></i></div>
+                          <h2 className="text-[11px] md:text-xs font-bold uppercase tracking-widest leading-none pt-0.5">{settingsDb.namaKegiatan}</h2>
+                        </div>
+                      )}
+                      {settingsDb.namaInstansi && settingsDb.namaInstansi.trim() !== '' && (
+                        <div className="flex items-center text-slate-800">
+                          <div className="w-5 flex justify-center shrink-0 opacity-80 mr-2"><i className="fas fa-map-marker-alt text-xs"></i></div>
+                          <p className="text-[10px] md:text-[11px] font-semibold uppercase tracking-widest leading-none pt-0.5">{settingsDb.namaInstansi}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="w-full md:w-auto bg-white px-4 py-3 md:px-5 md:py-3.5 rounded-xl md:rounded-2xl shadow-sm border border-slate-200 flex flex-row md:flex-col items-center md:items-end justify-between md:justify-center">
+                  <div className="text-xl sm:text-2xl md:text-3xl font-black text-blue-600 tabular-nums tracking-tight">{currentTime.toLocaleTimeString('id-ID')}</div>
+                  <div className="text-[15px] sm:text-[10px] md:text-xs font-bold text-slate-800 uppercase tracking-wider md:mt-1 text-right">{currentTime.toLocaleDateString('id-ID', {weekday:'long', day:'numeric', month:'long', year:'numeric'})}</div>
+                </div>
+              </header>
+
+              {activeMenu === 'kalender' && (
+                <CalendarComponent userRole={user.role} {...{settingsDb, setSettingsDb, holidaysDb, setHolidaysDb, isSavingSettings, setIsSavingSettings, attendanceDb, usersDb}} />
+              )}
+              
+              {activeMenu === 'dashboard' && user.role === 'client' && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+                  <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 flex flex-col items-center text-center relative overflow-hidden group">
+                    {isLocating && (
+                      <div className="absolute inset-0 bg-white/90 backdrop-blur-sm z-20 flex flex-col items-center justify-center">
+                        <i className="fas fa-satellite-dish fa-spin text-4xl text-blue-600 mb-4"></i>
+                        <p className="font-bold text-slate-800 text-base">Mendeteksi Lokasi GPS...</p>
+                        <p className="text-xs font-medium text-slate-500 mt-1">Mohon tunggu sebentar</p>
+                      </div>
+                    )}
+                    <div className="absolute -top-16 -right-16 w-48 h-48 bg-blue-50 rounded-full mix-blend-multiply filter blur-3xl opacity-50 group-hover:scale-110 transition-transform duration-700 pointer-events-none"></div>
+                    <div className="bg-blue-600 w-20 h-20 rounded-full flex items-center justify-center mb-6 shadow-lg shadow-blue-200/50 relative z-10 text-white"><i className="fas fa-fingerprint text-4xl"></i></div>
+                    <h2 className="text-2xl font-bold text-slate-800 mb-4 relative z-10">Presensi Digital PPL</h2>
+                    <div className="flex flex-col items-center space-y-2.5 mb-8 relative z-10">
+                      <div className="text-slate-700 font-bold text-sm sm:text-base flex items-center bg-white px-4 py-1.5 rounded-full border border-slate-200 shadow-sm"><i className="fas fa-user-circle mr-2 text-blue-500 text-lg"></i>{user.name}</div>
+                      <div className="text-slate-500 font-medium text-xs flex items-center bg-slate-50 px-3 py-1 rounded-full border border-slate-100"><i className="fas fa-building mr-1.5 text-slate-400"></i>{settingsDb.namaInstansi}</div>
+                    </div>
+                    <div className="w-full relative z-10">
+                      {!activeRec ? (
+                        <div className="flex flex-col space-y-3">
+                          <button onClick={() => performPresensi('masuk')} disabled={isLocating} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl text-base shadow-lg shadow-blue-200/50 transform transition-all active:scale-[0.98] disabled:opacity-50 flex justify-center items-center"><i className="fas fa-sign-in-alt mr-2"></i> Presensi Sekarang</button>
+                          <div className="grid grid-cols-2 gap-3">
+                            <button onClick={() => performIzinSakit('Izin')} disabled={isLocating} className="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 rounded-xl text-sm shadow-md shadow-purple-200/50 transform transition-all active:scale-[0.98] disabled:opacity-50 flex justify-center items-center"><i className="fas fa-envelope-open-text mr-2"></i> Izin</button>
+                            <button onClick={() => performIzinSakit('Sakit')} disabled={isLocating} className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 rounded-xl text-sm shadow-md shadow-yellow-200/50 transform transition-all active:scale-[0.98] disabled:opacity-50 flex justify-center items-center"><i className="fas fa-notes-medical mr-2"></i> Sakit</button>
+                          </div>
+                        </div>
+                      ) : !activeRec.timeOut && !['Izin', 'Sakit', 'Alpa'].includes(activeRec.status) ? (
+                        <button onClick={() => performPresensi('pulang')} disabled={isLocating} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-xl text-base shadow-lg shadow-orange-200/50 transform transition-all active:scale-[0.98] disabled:opacity-50 flex justify-center items-center"><i className="fas fa-sign-out-alt mr-2"></i> Pulang Sekarang</button>
+                      ) : (
+                        <div className="w-full bg-green-50 text-green-700 p-4 rounded-xl font-bold border border-green-200 flex items-center justify-center space-x-2 text-base"><i className="fas fa-check-circle text-xl"></i><span>Tugas Selesai / {activeRec.status}</span></div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-900 p-6 sm:p-8 rounded-2xl shadow-xl text-white flex flex-col relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-blue-900/20 to-transparent pointer-events-none"></div>
+                    <h3 className="text-xl font-bold mb-8 border-b border-slate-800 pb-4 relative z-10 flex items-center"><i className="fas fa-clipboard-check mr-3 text-blue-400"></i>Status Kehadiran</h3>
+                    {activeRec ? (
+                      <div className="space-y-6 relative z-10 flex-1 justify-center flex flex-col">
+                        <div className="flex justify-between items-center bg-slate-800/50 p-5 rounded-xl border border-slate-700/50">
+                          <div className="space-y-1">
+                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider flex items-center"><i className="fas fa-door-open mr-1.5 text-slate-500"></i>Jam Masuk</p>
+                            <p className="text-3xl font-black tabular-nums">{activeRec.timeIn}</p>
+                          </div>
+                          <span className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wide shadow-md ${['Hadir', 'Terlambat'].includes(activeRec.status) ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'}`}>{activeRec.status}</span>
+                        </div>
+                        <div className="flex justify-between items-center bg-slate-800/50 p-5 rounded-xl border border-slate-700/50">
+                          <div className="space-y-1">
+                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider flex items-center"><i className="fas fa-door-closed mr-1.5 text-slate-500"></i>Jam Pulang</p>
+                            <p className="text-3xl font-black tabular-nums">{activeRec.timeOut || '--:--'}</p>
+                          </div>
+                          {activeRec.timeOut ? (
+                            <div className="bg-blue-500/20 p-2.5 rounded-lg border border-blue-500/30"><i className="fas fa-check text-xl text-blue-400"></i></div>
+                          ) : (
+                            <span className="text-[10px] font-bold text-orange-400 animate-pulse bg-orange-500/10 px-3 py-1.5 rounded-md border border-orange-500/20">Menunggu</span>
+                          )}
+                        </div>
+                      </div> 
+                    ) : (
+                      <div className="flex-1 flex flex-col items-center justify-center opacity-40 relative z-10 py-6">
+                        <i className="fas fa-mug-hot text-5xl mb-4"></i>
+                        <p className="font-semibold text-sm">Belum ada data presensi hari ini.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {activeMenu === 'riwayat' && user.role === 'client' && (
+                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                   <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50 flex items-center"><i className="fas fa-history mr-2 text-blue-600"></i><h3 className="text-lg font-bold text-slate-800">Catatan Kehadiran Anda</h3></div>
+                   <div className="overflow-x-auto p-2">
+                     <table className="w-full text-left border-collapse min-w-[500px]">
+                       <thead>
+                         <tr className="text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-100">
+                           <th className="px-4 py-3 font-bold">Tanggal</th>
+                           <th className="px-4 py-3 font-bold">Jam Masuk</th>
+                           <th className="px-4 py-3 font-bold">Jam Pulang</th>
+                           <th className="px-4 py-3 font-bold">Status</th>
+                         </tr>
+                       </thead>
+                       <tbody className="divide-y divide-slate-50">
+                         {attendanceDb.filter(a => a.userId === user.id).length > 0 ? (
+                           attendanceDb.filter(a => a.userId === user.id).sort((a,b) => new Date(b.date) - new Date(a.date)).map(record => (
+                             <tr key={record.id} className="hover:bg-slate-50/80 transition-colors">
+                               <td className="px-4 py-3 text-slate-700 font-semibold">{new Date(record.date).toLocaleDateString('id-ID', {day:'numeric', month:'short', year:'numeric'})}</td>
+                               <td className="px-4 py-3 text-slate-600 font-bold tabular-nums">{record.timeIn}</td>
+                               <td className="px-4 py-3 text-slate-600 font-bold tabular-nums">{record.timeOut || '-'}</td>
+                               <td className="px-4 py-3">
+                                 <span className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${['Hadir', 'Terlambat'].includes(record.status) ? 'bg-green-100 text-green-700 border border-green-200' : record.status === 'Menunggu' ? 'bg-slate-100 text-slate-600 border border-slate-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>{record.status}</span>
+                               </td>
+                             </tr>
+                           ))
+                         ) : ( 
+                           <tr><td colSpan="4" className="p-12 text-center text-slate-400 font-medium"><i className="fas fa-folder-open text-2xl mb-2 block opacity-50"></i>Belum ada data presensi pada bulan ini.</td></tr> 
+                         )}
+                       </tbody>
+                     </table>
+                   </div>
+                 </div>
+              )}
+
+          {activeMenu === 'dashboard' && user.role === 'admin' && (
+            <div className="space-y-8 animate-fadeIn">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center space-x-5 relative overflow-hidden group">
+                  <div className="absolute right-0 top-0 w-20 h-20 bg-blue-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+                  <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 shadow-inner relative z-10"><i className="fas fa-users text-xl"></i></div>
+                  <div className="relative z-10">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Total Client</p>
+                    <h3 className="text-3xl font-black text-slate-800">{usersDb.filter(u=>u.role==='client').length}</h3>
+                  </div>
+                </div>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center space-x-5 relative overflow-hidden group">
+                  <div className="absolute right-0 top-0 w-20 h-20 bg-green-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+                  <div className="w-14 h-14 bg-green-100 rounded-xl flex items-center justify-center text-green-600 shadow-inner relative z-10"><i className="fas fa-check-double text-xl"></i></div>
+                  <div className="relative z-10">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Hadir Hari Ini</p>
+                    <h3 className="text-3xl font-black text-slate-800">{attendanceDb.filter(a => a.date === todayStr && ['Hadir', 'Terlambat'].includes(a.status)).length}</h3>
+                  </div>
+                </div>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center space-x-5 relative overflow-hidden group">
+                  <div className="absolute right-0 top-0 w-20 h-20 bg-red-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+                  <div className="w-14 h-14 bg-red-100 rounded-xl flex items-center justify-center text-red-600 shadow-inner relative z-10"><i className="fas fa-user-clock text-xl"></i></div>
+                  <div className="relative z-10">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Terlambat</p>
+                    <h3 className="text-3xl font-black text-slate-800">{attendanceDb.filter(a => a.date === todayStr && a.status === 'Terlambat').length}</h3>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                  <div>
+                    <h3 className="text-base font-bold text-slate-800 flex items-center"><i className="fas fa-chart-bar mr-2 text-blue-600"></i>Ringkasan Akumulasi Kehadiran Bulanan</h3>
+                    <p className="text-xs text-slate-400 font-medium mt-0.5">Total akumulasi kehadiran pada periode aktif: <b className="text-blue-600">{filterMonth}</b></p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wide hidden sm:block">Pilih Periode:</label>
+                    <select value={filterMonth} onChange={e => setFilterMonth(e.target.value)} className="bg-slate-50 border border-slate-200 text-slate-700 font-bold py-1.5 px-3 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm">
+                      {availableMonthsOptions.map(option => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="overflow-x-auto p-2">
+                  <table className="w-full text-left border-collapse min-w-[500px]">
+                    <thead>
+                      <tr className="text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-100">
+                        <th className="px-4 py-3 font-bold">Nama Lengkap</th>
+                        <th className="px-4 py-3 font-bold text-center text-green-600">Hadir</th>
+                        <th className="px-4 py-3 font-bold text-center text-purple-600">Izin</th>
+                        <th className="px-4 py-3 font-bold text-center text-yellow-600">Sakit</th>
+                        <th className="px-4 py-3 font-bold text-center text-red-600">Alpa</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50 text-slate-700">
+                      {monthlyClientSummaries.map(c => (
+                        <tr key={c.id} className="hover:bg-slate-50/80 transition-colors font-medium">
+                          <td className="px-4 py-3 font-bold text-slate-800 flex items-center space-x-3">
+                            <div className="w-7 h-7 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xs uppercase">{c.name.charAt(0)}</div>
+                            <div>
+                              <span>{c.name}</span>
+                              <span className="block text-[10px] text-slate-400 font-mono mt-0.5">{c.nim || '-'}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-center tabular-nums text-green-600 font-bold bg-green-50/20">{c.hadir}</td>
+                          <td className="px-4 py-3 text-center tabular-nums text-purple-600 font-bold bg-purple-50/20">{c.izin}</td>
+                          <td className="px-4 py-3 text-center tabular-nums text-yellow-600 font-bold bg-yellow-50/20">{c.sakit}</td>
+                          <td className="px-4 py-3 text-center tabular-nums text-red-600 font-bold bg-red-50/20">{c.alpa}</td>
+                        </tr>
+                      ))}
+                      {monthlyClientSummaries.length === 0 && (
+                        <tr><td colSpan="5" className="p-10 text-center text-slate-400 font-medium italic"><i className="fas fa-folder-open text-xl mb-1.5 block opacity-40"></i>Belum ada data client terdaftar.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                  <div>
+                    <h3 className="text-base font-bold text-slate-800 flex items-center"><i className="fas fa-clipboard-list mr-2 text-blue-600"></i>Status Kehadiran Hari Ini</h3>
+                    <p className="text-xs text-slate-400 font-medium mt-0.5">Daftar rekap kehadiran real-time per tanggal {currentTime.toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'})}</p>
+                  </div>
+                  <span className="text-[10px] font-black bg-slate-900 text-white px-3 py-1 rounded-full uppercase tracking-wider tracking-tight tabular-nums">Hari Aktif</span>
+                </div>
+                <div className="overflow-x-auto p-2">
+                  <table className="w-full text-left border-collapse min-w-[500px]">
+                    <thead>
+                      <tr className="text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-100">
+                        <th className="px-4 py-3 font-bold">Nama Lengkap</th>
+                        <th className="px-4 py-3 font-bold">Jam Masuk</th>
+                        <th className="px-4 py-3 font-bold">Jam Pulang</th>
+                        <th className="px-4 py-3 font-bold text-right">Status Kehadiran</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {todayAttendanceList.map(c => (
+                        <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="px-4 py-3 font-semibold text-slate-800 flex items-center space-x-3">
+                            <div className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs uppercase">{c.name.charAt(0)}</div>
+                            <div>
+                              <span>{c.name}</span>
+                              <span className="block text-[10px] text-slate-400 font-mono mt-0.5">{c.nim || '-'}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 font-bold text-slate-700 tabular-nums">{c.timeIn}</td>
+                          <td className="px-4 py-3 font-bold text-slate-700 tabular-nums">{c.timeOut || '-'}</td>
+                          <td className="px-4 py-3 text-right">
+                            <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                              ['Hadir','Terlambat'].includes(c.status) ? 'bg-green-100 text-green-700 border border-green-200' :
+                              ['Izin','Sakit'].includes(c.status) ? 'bg-purple-100 text-purple-700 border border-purple-200' :
+                              c.status === 'Belum Absen' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200/60 animate-pulse' :
+                              'bg-red-100 text-red-700 border border-red-200'
+                            }`}>{c.status}</span>
+                          </td>
+                        </tr>
+                      ))}
+                      {todayAttendanceList.length === 0 && (
+                        <tr><td colSpan="4" className="p-10 text-center text-slate-400 font-medium italic"><i className="fas fa-folder-open text-xl mb-1.5 block opacity-40"></i>Belum ada personil client yang terdaftar di database.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeMenu === 'data client' && user.role === 'admin' && (
+            <div className="space-y-6">
+              <div className="bg-white p-4 sm:p-8 rounded-2xl shadow-sm border border-slate-200">
+                <h3 className="text-lg font-bold text-slate-800 mb-5 flex items-center"><i className="fas fa-user-plus mr-2 text-blue-600 bg-blue-50 p-1.5 rounded"></i> Pendaftaran Client Baru</h3>
+                <form onSubmit={handleAddUser} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Nama Lengkap</label>
+                    <input type="text" required value={newUser.name} onChange={e=>setNewUser({...newUser, name: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="Cth: Joko Widodo"/>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Username Login</label>
+                    <input type="text" required value={newUser.username} onChange={e=>setNewUser({...newUser, username: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="Cth: Joko"/>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">NIM</label>
+                    <input type="text" value={newUser.nim} onChange={e=>setNewUser({...newUser, nim: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="Cth: 200100..."/>
+                  </div>
+                  <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl shadow-md shadow-blue-200 transition-all active:scale-95 h-[42px] text-sm">Simpan Data</button>
+                </form>
+              </div>
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50"><h3 className="text-base font-bold text-slate-800">Daftar Akun Client</h3></div>
+                <div className="overflow-x-auto p-2">
+                  <table className="w-full text-left border-collapse min-w-[500px]">
+                     <thead>
+                       <tr className="text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-100">
+                         <th className="px-4 py-3 font-bold">Nama Lengkap</th>
+                         <th className="px-4 py-3 font-bold">Username</th>
+                         <th className="px-4 py-3 font-bold">NIM</th>
+                         <th className="px-4 py-3 font-bold text-right">Manajemen</th>
+                       </tr>
+                     </thead>
+                     <tbody className="divide-y divide-slate-50">
+                       {usersDb.filter(u => u.role === 'client').map(u => (
+                         <tr key={u.id} className="hover:bg-slate-50/80 transition-colors group">
+                           <td className="px-4 py-3 text-slate-800 font-semibold flex items-center space-x-3">
+                             <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">{String(u.name || 'U').charAt(0).toUpperCase()}</div>
+                             <span className="text-sm">{u.name}</span>
+                           </td>
+                           <td className="px-4 py-3"><span className="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md text-[11px] font-bold font-mono">{u.username}</span></td>
+                           <td className="px-4 py-3 text-slate-600 font-medium text-sm">{u.nim || '-'}</td>
+                           <td className="px-4 py-3 text-right whitespace-nowrap space-x-2">
+                             <button onClick={() => handleEditUser(u)} className="w-7 h-7 bg-blue-50 text-blue-500 hover:bg-blue-500 hover:text-white rounded-md transition-colors opacity-50 group-hover:opacity-100" title="Edit Akun"><i className="fas fa-edit text-xs"></i></button>
+                             <button onClick={()=>handleDeleteUser(u.id)} className="w-7 h-7 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-md transition-colors opacity-50 group-hover:opacity-100" title="Hapus Akun"><i className="fas fa-trash-alt text-xs"></i></button>
+                           </td>
+                         </tr>
+                       ))}
+                     </tbody>
+                   </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeMenu === 'laporan' && user.role === 'admin' && (
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50 flex flex-col md:flex-row justify-between items-center gap-4">
+                  <h3 className="text-lg font-bold text-slate-800 flex items-center"><i className="fas fa-file-signature mr-2 text-blue-600"></i>Rekapitulasi Kehadiran</h3>
+                  <div className="flex items-center space-x-2.5 w-full md:w-auto justify-end flex-wrap gap-y-2">
+                    <input type="month" value={filterMonth} onChange={e => setFilterMonth(e.target.value)} className="flex-1 md:flex-none bg-white border border-slate-300 text-slate-700 font-bold py-2 px-3 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all h-[38px]" />
+                    <button onClick={handleAddBulkAttendance} className="bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white border border-blue-200 hover:border-blue-600 p-2.5 rounded-lg transition-all flex items-center justify-center shadow-sm h-[38px] w-[38px] shrink-0" title="Tambah Presensi Massal"><i className="fas fa-calendar-plus text-lg"></i></button>
+                    {hasData && currentVerif && (<a href={currentVerif.url} target="_blank" rel="noreferrer" className="bg-emerald-50 hover:bg-emerald-500 text-emerald-600 hover:text-white border border-emerald-200 hover:border-emerald-500 p-2.5 rounded-lg transition-all flex items-center justify-center shadow-sm h-[38px] w-[38px] shrink-0" title="Buka Halaman Verifikasi Resmi"><i className="fas fa-external-link-alt text-lg"></i></a>)}
+                    {hasData && !currentVerif && (<button onClick={handleGenerateVerif} className="bg-blue-50 hover:bg-blue-500 text-blue-600 hover:text-white border border-blue-200 hover:border-blue-500 p-2.5 rounded-lg transition-all flex items-center justify-center shadow-sm h-[38px] w-[38px] shrink-0" title="Unduh Tautan Verifikasi Baru"><i className="fas fa-link text-lg"></i></button>)}
+                    {hasData && (
+                      <button onClick={handleDownloadPDF} className="bg-red-50 hover:bg-red-500 text-red-600 hover:text-white border border-red-200 hover:border-red-500 p-2.5 rounded-lg transition-all flex items-center justify-center shadow-sm h-[38px] w-[38px] shrink-0" title="Unduh Laporan Format PDF"><i className="fas fa-file-pdf text-lg"></i></button>
+                    )}
+                  </div>
+                </div>
+                <div className="overflow-x-auto p-2">
+                 <table className="w-full text-left border-collapse min-w-[600px]">
+                   <thead>
+                     <tr className="text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-100">
+                       <th className="px-4 py-3 font-bold">Tanggal</th>
+                       <th className="px-4 py-3 font-bold">Nama Lengkap</th>
+                       <th className="px-4 py-3 font-bold">Jam Masuk</th>
+                       <th className="px-4 py-3 font-bold">Jam Pulang</th>
+                       <th className="px-4 py-3 font-bold">Status Kehadiran</th>
+                       <th className="px-4 py-3 font-bold text-right">Aksi</th>
+                     </tr>
+                   </thead>
+                   <tbody className="divide-y divide-slate-50">
+                     {filteredAttendanceData.length > 0 ? filteredAttendanceData.sort((a,b) => new Date(b.date) - new Date(a.date)).map(record => {
+                       const u = usersDb.find(user => user.id === record.userId);
+                       if (!u) return null;
+                       return (
+                         <tr key={record.id} className="hover:bg-slate-50/80 transition-colors group">
+                           <td className="px-4 py-3 text-slate-600 font-semibold text-xs">{new Date(record.date).toLocaleDateString('id-ID', {day:'numeric', month:'short', year:'numeric'})}</td>
+                           <td className="px-4 py-3 font-semibold text-slate-800 text-sm">{u.name}</td>
+                           <td className="px-4 py-3 text-slate-600 font-bold tabular-nums text-sm">{record.timeIn}</td>
+                           <td className="px-4 py-3 text-slate-600 font-bold tabular-nums text-sm">{record.timeOut || '-'}</td>
+                           <td className="px-4 py-3">
+                             <span className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                               ['Hadir', 'Terlambat'].includes(record.status) ? 'bg-green-100 text-green-700 border border-green-200' : 
+                               record.status === 'Menunggu' ? 'bg-slate-100 text-slate-600 border border-slate-200' : 
+                               'bg-purple-100 text-purple-700 border border-purple-200'
+                             }`}>
+                               {record.status}
+                             </span>
+                           </td>
+                           <td className="px-4 py-3 text-right whitespace-nowrap space-x-2">
+                             <button onClick={() => handleEditAttendance(record)} className="w-7 h-7 bg-blue-50 text-blue-500 hover:bg-blue-500 hover:text-white rounded-md transition-colors opacity-50 group-hover:opacity-100" title="Edit Presensi"><i className="fas fa-edit text-xs"></i></button>
+                             <button onClick={() => handleDeleteAttendance(record.id)} className="w-7 h-7 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-md transition-colors opacity-50 group-hover:opacity-100" title="Hapus Presensi"><i className="fas fa-trash-alt text-xs"></i></button>
+                           </td>
+                         </tr>
+                       )
+                     }) : <tr><td colSpan="6" className="p-12 text-center text-slate-400 font-medium"><i className="fas fa-box-open text-2xl mb-2 block opacity-50"></i>Belum ada data presensi pada bulan ini.</td></tr> }
+                   </tbody>
+                 </table>
+               </div>
+             </div>
+          )}
+
+          {activeMenu === 'profil' && user.role === 'admin' && (
+            <div className="bg-white p-4 sm:p-8 md:p-10 rounded-2xl shadow-sm border border-slate-200 max-w-4xl">
+              <h3 className="text-xl font-bold text-slate-800 mb-8 flex items-center"><div className="bg-blue-50 p-2 rounded-xl mr-3"><i className="fas fa-building text-blue-600"></i></div>Aturan & Profil Instansi</h3>
+              <form onSubmit={async e => { e.preventDefault(); setIsSavingSettings(true); try { await window.fs.setDoc(window.fs.doc(window.db, "settings", "config"), settingsDb); setIsSavingSettings(false); Swal.fire('Berhasil', 'Pengaturan instansi diperbarui.', 'success'); } catch (error) { setIsSavingSettings(false); Swal.fire('Error', 'Gagal menyimpan pengaturan', 'error'); } }} className="space-y-6">
+                <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 ml-1">Nama Kegiatan (Opsional)</label>
+                    <input type="text" value={settingsDb.namaKegiatan || ''} onChange={e=>setSettingsDb({...settingsDb, namaKegiatan: e.target.value})} className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl font-semibold text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm" placeholder="Contoh: KKN / PKL / Pelatihan Dasar"/>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 ml-1">Nama Instansi</label>
+                  <input type="text" required value={settingsDb.namaInstansi} onChange={e=>setSettingsDb({...settingsDb, namaInstansi: e.target.value})} className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl font-semibold text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm"/>
+                </div>
+                <div>
+                  <div className="flex justify-between items-center mb-2 ml-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Titik Koordinat (Pusat GPS)</label>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" className="sr-only peer" checked={String(settingsDb.useLocation).toLowerCase() === 'true'} onChange={e => setSettingsDb({...settingsDb, useLocation: e.target.checked ? 'true' : 'false'})} />
+                      <div className="w-9 h-5 bg-slate-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-500"></div>
+                      <span className="ml-2 text-[10px] font-bold text-slate-500 uppercase">{String(settingsDb.useLocation).toLowerCase() === 'true' ? 'Aktif' : 'Nonaktif'}</span>
+                    </label>
+                  </div>
+                  <div className={`flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 transition-opacity ${String(settingsDb.useLocation).toLowerCase() !== 'true' ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <input type="text" required value={settingsDb.lokasi} onChange={e=>setSettingsDb({...settingsDb, lokasi: e.target.value})} className="flex-1 bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl font-semibold font-mono text-sm text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="Contoh: -6.200000, 106.816666" />
+                    <button type="button" onClick={() => { Swal.fire({title: 'Mencari Lokasi', allowOutsideClick: false, didOpen: () => Swal.showLoading()}); navigator.geolocation.getCurrentPosition(p => { const l=`${p.coords.latitude.toFixed(6)}, ${p.coords.longitude.toFixed(6)}`; setSettingsDb({...settingsDb, lokasi: l}); Swal.fire({icon:'success', title:'Lokasi Ditemukan', text:l, timer:1500, showConfirmButton:false}); }, err => Swal.fire('Gagal GPS', err.message, 'error'), {enableHighAccuracy: true}); }} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-3 rounded-xl font-bold transition-all flex items-center justify-center whitespace-nowrap text-sm"><i className="fas fa-crosshairs text-blue-600 mr-2"></i> Ambil Titik</button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 border-t border-slate-100 pt-6 mt-6">
+                  <div>
+                    <div className="flex justify-between items-center mb-2 ml-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Batas Jam Masuk</label>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" className="sr-only peer" checked={String(settingsDb.useTime).toLowerCase() === 'true'} onChange={e => setSettingsDb({...settingsDb, useTime: e.target.checked ? 'true' : 'false'})} />
+                        <div className="w-9 h-5 bg-slate-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-500"></div>
+                        <span className="ml-2 text-[10px] font-bold text-slate-500 uppercase">{String(settingsDb.useTime).toLowerCase() === 'true' ? 'Aktif' : 'Nonaktif'}</span>
+                      </label>
+                    </div>
+                    <div className={`transition-opacity ${String(settingsDb.useTime).toLowerCase() !== 'true' ? 'opacity-50 pointer-events-none' : ''}`}>
+                      <input type="time" value={settingsDb.jamMasuk} onChange={e=>setSettingsDb({...settingsDb, jamMasuk: e.target.value})} className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl font-bold text-lg text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"/>
+                      <p className="text-[9px] text-slate-400 font-semibold mt-1.5 ml-1 italic">*Lebih dari jam ini status menjadi "Terlambat"</p>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 ml-1">Jam Pulang Default</label>
+                    <input type="time" value={settingsDb.jamPulang} onChange={e=>setSettingsDb({...settingsDb, jamPulang: e.target.value})} className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl font-bold text-lg text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"/>
+                  </div>
+                </div>
+                <div className="border-t border-slate-100 pt-6 mt-6">
+                  <h4 className="text-sm font-bold text-slate-800 flex items-center mb-4"><i className="fas fa-map-marked-alt mr-2 text-blue-500"></i> Alamat Lengkap Instansi</h4>
+                  <div className="space-y-4">
+                     <div>
+                       <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Jalan / Detail Alamat</label>
+                       <input type="text" value={settingsDb.alamat || ''} onChange={e=>setSettingsDb({...settingsDb, alamat: e.target.value})} className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl font-semibold text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm" placeholder="Cth: Jl. Merdeka No. 10"/>
+                     </div>
+                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                       <div>
+                         <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Desa / Kecamatan</label>
+                         <input type="text" value={settingsDb.desaKecamatan || ''} onChange={e=>setSettingsDb({...settingsDb, desaKecamatan: e.target.value})} className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl font-semibold text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm" placeholder="Cth: Sumbersari"/>
+                       </div>
+                       <div>
+                         <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Kota / Kabupaten</label>
+                         <input type="text" value={settingsDb.kotaKabupaten || ''} onChange={e=>setSettingsDb({...settingsDb, kotaKabupaten: e.target.value})} className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl font-semibold text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm" placeholder="Cth: Jember"/>
+                       </div>
+                       <div>
+                         <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Provinsi / Negara</label>
+                         <input type="text" value={settingsDb.negara || ''} onChange={e=>setSettingsDb({...settingsDb, negara: e.target.value})} className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl font-semibold text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm" placeholder="Cth: Jawa Timur, Indonesia"/>
+                       </div>
+                       <div>
+                         <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Kode Pos</label>
+                         <input type="text" value={settingsDb.kodePos || ''} onChange={e=>setSettingsDb({...settingsDb, kodePos: e.target.value})} className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl font-semibold text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm" placeholder="Cth: 68121"/>
+                       </div>
+                     </div>
+                  </div>
+                </div>
+                <div className="border-t border-slate-100 pt-6 mt-6">
+                  <h4 className="text-sm font-bold text-slate-800 flex items-center mb-4"><i className="fas fa-link mr-2 text-blue-500"></i> Integrasi Sistem</h4>
+                  <div className="space-y-4">
+                     <div>
+                       <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Link Website (Akan digunakan untuk QR Verifikasi PDF)</label>
+                       <input type="url" value={settingsDb.appScriptUrl || ''} onChange={e=>setSettingsDb({...settingsDb, appScriptUrl: e.target.value})} className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl font-semibold text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm" placeholder="Cth: https://username.github.io/presensi"/>
+                       <p className="text-[9px] text-slate-400 font-semibold mt-1.5 ml-1 italic">*Kosongkan jika ingin sistem mendeteksi otomatis URL GitHub Pages Anda.</p>
+                     </div>
+                  </div>
+                </div>
+                <div className="border-t border-slate-100 pt-6 mt-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="text-sm font-bold text-slate-800 flex items-center"><i className="fas fa-pen-nib mr-2 text-blue-500"></i> Penanggung Jawab Laporan</h4>
+                    <button type="button" onClick={() => { let currentPjs = []; try { currentPjs = JSON.parse(settingsDb.penanggungJawab || "[]"); } catch(e) {} currentPjs.push({jabatan: '', nama: '', nip: ''}); setSettingsDb({...settingsDb, penanggungJawab: JSON.stringify(currentPjs)}); }} className="bg-blue-100 text-blue-600 hover:bg-blue-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"><i className="fas fa-plus mr-1"></i> Tambah PJ</button>
+                  </div>
+                  {(() => {
+                    let pjs = []; try { pjs = JSON.parse(settingsDb.penanggungJawab || "[]"); } catch(e) {}
+                    if (pjs.length === 0) return <p className="text-xs text-slate-400 italic mb-4">Belum ada penanggung jawab. Klik tombol tambah.</p>;
+                    return pjs.map((pj, idx) => (
+                      <div key={idx} className="grid grid-cols-1 sm:grid-cols-12 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 mb-3 relative group">
+                        <div className="sm:col-span-4">
+                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Jabatan</label>
+                          <input type="text" value={pj.jabatan} onChange={e => { const np = [...pjs]; np[idx].jabatan = e.target.value; setSettingsDb({...settingsDb, penanggungJawab: JSON.stringify(np)}) }} placeholder="Cth: Kepala Sekolah" className="w-full bg-white border border-slate-200 px-3 py-2 rounded-lg font-normal text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"/>
+                        </div>
+                        <div className="sm:col-span-4">
+                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Nama Lengkap</label>
+                          <input type="text" value={pj.nama} onChange={e => { const np = [...pjs]; np[idx].nama = e.target.value; setSettingsDb({...settingsDb, penanggungJawab: JSON.stringify(np)}) }} placeholder="Cth: Budi Santoso, M.Pd" className="w-full bg-white border border-slate-200 px-3 py-2 rounded-lg font-semibold text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"/>
+                        </div>
+                        <div className="sm:col-span-3">
+                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">NIP / NIM / Kustom</label>
+                          <input type="text" value={pj.nip} onChange={e => { const np = [...pjs]; np[idx].nip = e.target.value; setSettingsDb({...settingsDb, penanggungJawab: JSON.stringify(np)}) }} placeholder="Cth: NIP. 1980..." className="w-full bg-white border border-slate-200 px-3 py-2 rounded-lg font-semibold text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"/>
+                        </div>
+                        <div className="sm:col-span-1 flex flex-col justify-end">
+                          <button type="button" onClick={() => { const np = pjs.filter((_, i) => i !== idx); setSettingsDb({...settingsDb, penanggungJawab: JSON.stringify(np)}); }} className="w-full h-[38px] bg-red-100 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-colors flex items-center justify-center"><i className="fas fa-trash-alt"></i></button>
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                </div>
+                <button type="submit" className="w-full bg-slate-900 hover:bg-blue-600 text-white font-bold py-3.5 mt-2 rounded-xl shadow-md transition-all active:scale-[0.98] flex items-center justify-center text-sm">Simpan Pengaturan</button>
+              </form>
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
 </body>
 </html>
