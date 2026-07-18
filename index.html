@@ -113,7 +113,7 @@
   <div id="root" class="min-h-screen w-full"></div>
 
   <!-- MEMUAT SUB-MODUL SECARA BERURUTAN & MENDAFTARKANNYA KE WINDOW GLOBAL SCOPE -->
-  <script type="text/babel" data-presets="react,env" src="./js/kalender-akademik.js" onload="if(typeof KalenderAcademicView!=='undefined')window.KalenderAcademicView=KalenderAcademicView"></script>
+  <script type="text/babel" data-presets="react,env" src="./js/kalender-akademik.js" onload="if(typeof KalenderAcademicView!=='undefined')window.CalendarComponent=KalenderAcademicView"></script>
   <script type="text/babel" data-presets="react,env" src="./js/dashboard-guru.js" onload="if(typeof DashboardGuruView!=='undefined')window.DashboardGuruView=DashboardGuruView"></script>
   <script type="text/babel" data-presets="react,env" src="./js/riwayat-guru.js" onload="if(typeof RiwayatGuruView!=='undefined')window.RiwayatGuruView=RiwayatGuruView"></script>
   <script type="text/babel" data-presets="react,env" src="./js/dashboard-admin.js" onload="if(typeof DashboardAdminView!=='undefined')window.DashboardAdminView=DashboardAdminView"></script>
@@ -122,7 +122,7 @@
   <script type="text/babel" data-presets="react,env" src="./js/data-murid.js" onload="if(typeof DataMuridView!=='undefined')window.DataMuridView=DataMuridView"></script>
   <script type="text/babel" data-presets="react,env" src="./js/data-rombel.js" onload="if(typeof DataRombelView!=='undefined')window.DataRombelView=DataRombelView"></script>
   <script type="text/babel" data-presets="react,env" src="./js/laporan-presensi.js" onload="if(typeof LaporanPresensiView!=='undefined')window.LaporanPresensiView=LaporanPresensiView"></script>
-  <script type="text/babel" data-presets="react,env" src="./js/profil-sekolah.js" onload="if(typeof ProfilSekolahView!=='undefined')window.ProfilSekolahView=ProfilSekolahView"></script>
+  <script type="text/babel" data-presets="react,env" src="./js/profil-sekolah.js" onload="if(typeof ProfilSchoolView!=='undefined')window.ProfilSekolahView=ProfilSchoolView"></script>
 
   <!-- LOGIKA APP ORCHESTRATOR UTAMA (ENTRY POINT) -->
   <script type="text/babel" data-presets="react,env">
@@ -328,10 +328,8 @@
       };
 
       useEffect(() => {
-        // Berikan delay kecil untuk memastikan skrip eksternal di-transpile oleh Babel dan di-mount ke window global
         setTimeout(() => {
           if (typeof window.DashboardAdminView === 'undefined') {
-            // Pasangkan fallback penyelemat scope jika onload meleset di beberapa versi browser
             if (typeof KalenderAcademicView !== 'undefined') window.CalendarComponent = KalenderAcademicView;
             if (typeof DashboardGuruView !== 'undefined') window.DashboardGuruView = DashboardGuruView;
             if (typeof RiwayatGuruView !== 'undefined') window.RiwayatGuruView = RiwayatGuruView;
@@ -689,29 +687,72 @@
 
       return (
         <div className="flex flex-col lg:flex-row h-screen overflow-hidden">
+          
           {/* SIDEBAR FOR DESKTOP */}
           <aside className="hidden lg:flex w-64 bg-slate-900 text-white flex-col shadow-xl z-20 shrink-0">
             <div className="p-6 border-b border-slate-800 flex items-center space-x-3">
-              <h2 className="text-xl font-bold tracking-tight">Perangkat Guru</h2>
+              <img src="./asset/LOGO%20UNIVERSITAS%20JEMBER%20.png" alt="Logo Instansi" class="w-8 h-auto drop-shadow" onerror="this.style.display='none'">
+              <div>
+                <h2 className="text-sm font-black tracking-tight uppercase leading-tight">Perangkat Guru</h2>
+                <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">{user.role}</p>
+              </div>
             </div>
-            <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
-              <button onClick={() => changeMenu('dashboard')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'dashboard' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><span className="font-semibold text-sm">Dashboard</span></button>
+            
+            <nav className="flex-1 px-4 py-6 space-y-1.5">
+              <button onClick={() => changeMenu('dashboard')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'dashboard' ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-900/30' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                <i className="fas fa-home w-5 text-center text-sm"></i>
+                <span className="text-sm font-medium">Dashboard</span>
+              </button>
+              
               {user.role === 'client' && (
                 <>
-                  <button onClick={() => changeMenu('riwayat')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'riwayat' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><span className="font-semibold text-sm">Riwayat Presensi</span></button>
-                  <button onClick={() => changeMenu('kalender')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'kalender' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><span className="font-semibold text-sm">Kalender</span></button>
+                  <button onClick={() => changeMenu('riwayat')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'riwayat' ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-900/30' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                    <i className="fas fa-history w-5 text-center text-sm"></i>
+                    <span className="text-sm font-medium">Riwayat Presensi</span>
+                  </button>
+                  <button onClick={() => changeMenu('kalender')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'kalender' ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-900/30' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                    <i className="fas fa-calendar-alt w-5 text-center text-sm"></i>
+                    <span className="text-sm font-medium">Kalender</span>
+                  </button>
                 </>
               )}
-              {user.role === 'admin' && <>
-                <button onClick={() => changeMenu('tahun-pelajaran')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'tahun-pelajaran' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><span className="font-semibold text-sm">Tahun Pelajaran</span></button>
-                <button onClick={() => changeMenu('data-guru')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'data-guru' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><span className="font-semibold text-sm">Data Guru</span></button>
-                <button onClick={() => changeMenu('data-murid')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'data-murid' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><span className="font-semibold text-sm">Data Murid</span></button>
-                <button onClick={() => changeMenu('rombel')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'rombel' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><span className="font-semibold text-sm">Data Rombel</span></button>
-                <button onClick={() => changeMenu('laporan')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'laporan' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><span className="font-semibold text-sm">Laporan Presensi</span></button>
-                <button onClick={() => changeMenu('profil')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'profil' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><span className="font-semibold text-sm">Profil Sekolah</span></button>
-              </>}
+              
+              {user.role === 'admin' && (
+                <>
+                  <button onClick={() => changeMenu('tahun-pelajaran')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'tahun-pelajaran' ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-900/30' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                    <i className="fas fa-graduation-cap w-5 text-center text-sm"></i>
+                    <span className="text-sm font-medium">Tahun Pelajaran</span>
+                  </button>
+                  <button onClick={() => changeMenu('data-guru')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'data-guru' ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-900/30' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                    <i className="fas fa-chalkboard-teacher w-5 text-center text-sm"></i>
+                    <span className="text-sm font-medium">Data Guru</span>
+                  </button>
+                  <button onClick={() => changeMenu('data-murid')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'data-murid' ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-900/30' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                    <i className="fas fa-user-graduate w-5 text-center text-sm"></i>
+                    <span className="text-sm font-medium">Data Murid</span>
+                  </button>
+                  <button onClick={() => changeMenu('rombel')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'rombel' ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-900/30' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                    <i className="fas fa-cubes w-5 text-center text-sm"></i>
+                    <span className="text-sm font-medium">Data Rombel</span>
+                  </button>
+                  <button onClick={() => changeMenu('laporan')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'laporan' ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-900/30' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                    <i className="fas fa-file-invoice w-5 text-center text-sm"></i>
+                    <span className="text-sm font-medium">Laporan Presensi</span>
+                  </button>
+                  <button onClick={() => changeMenu('profil')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'profil' ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-900/30' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}>
+                    <i className="fas fa-building w-5 text-center text-sm"></i>
+                    <span className="text-sm font-medium">Profil Sekolah</span>
+                  </button>
+                </>
+              )}
             </nav>
-            <div className="p-5 border-t border-slate-800"><button onClick={handleLogout} className="w-full bg-slate-800 hover:bg-red-500 text-slate-300 p-3 rounded-xl font-semibold transition-all">Keluar</button></div>
+            
+            <div className="p-4 border-t border-slate-800/80">
+              <button onClick={handleLogout} className="w-full flex items-center justify-center space-x-2 bg-slate-850 hover:bg-red-600/20 hover:text-red-400 border border-slate-800 text-slate-400 p-3 rounded-xl font-semibold transition-all active:scale-[0.98]">
+                <i className="fas fa-power-off text-sm"></i>
+                <span className="text-sm">Keluar</span>
+              </button>
+            </div>
           </aside>
 
           {/* SCREEN DISPLAY MANAGEMENT */}
@@ -719,11 +760,11 @@
             <div className="p-4 md:p-8 max-w-full mx-auto min-h-full">
               <header className="flex justify-between items-end mb-8">
                 <div>
-                  <h1 className="text-2xl font-black text-slate-900 capitalize">{activeMenu.replace('-', ' ')}</h1>
-                  <p className="text-xs text-slate-500 font-bold uppercase mt-1">{settingsDb.namaInstansi}</p>
+                  <h1 className="text-2xl font-black text-slate-900 capitalize tracking-tight">{activeMenu.replace('-', ' ')}</h1>
+                  <p className="text-xs text-slate-400 font-bold uppercase mt-1 tracking-wider">{settingsDb.namaInstansi}</p>
                 </div>
-                <div className="text-right bg-white p-3 rounded-xl shadow-sm border">
-                  <div className="text-xl font-black text-blue-600 tabular-nums">{currentTime.toLocaleTimeString('id-ID')}</div>
+                <div className="text-right bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex items-center space-x-3 px-4">
+                  <div className="text-lg font-black text-blue-600 tabular-nums tracking-tight">{currentTime.toLocaleTimeString('id-ID')}</div>
                 </div>
               </header>
 
