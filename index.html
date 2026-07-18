@@ -20,6 +20,14 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   
   <style>
+    /* Mengubah rasio aplikasi agar lebih kecil/zoom out sehingga terlihat lebih lebar dan luas */
+    body {
+      transform: scale(0.92);
+      transform-origin: top center;
+      width: 108.7%;
+      max-width: 108.7% !important;
+    }
+
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
@@ -71,7 +79,7 @@
     window.dispatchEvent(new Event('firebase-ready'));
   </script>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans antialiased text-sm">
+<body class="bg-slate-50 text-slate-800 font-sans antialiased text-sm min-h-screen">
 
   <div id="app-splash-screen" class="fixed inset-0 bg-gradient-to-br from-blue-600 to-blue-700 z-[9999] flex flex-col items-center justify-center text-white p-4 transition-all duration-700">
     <div id="splash-content" class="flex flex-col items-center max-w-md text-center space-y-5">
@@ -407,6 +415,7 @@
 
       const [usersDb, setUsersDb] = useState([]);
       const [studentsDb, setStudentsDb] = useState([]); 
+      const [rombelsDb, setRombelsDb] = useState([]); // State data rombel
       const [attendanceDb, setAttendanceDb] = useState([]);
       const [holidaysDb, setHolidaysDb] = useState([]); 
       const [verificationsDb, setVerificationsDb] = useState([]); 
@@ -420,13 +429,14 @@
       const [newUser, setNewUser] = useState({ name: '', username: '', nim: '' });
 
       const loadAllSystemData = async () => {
-        const [usersSnap, attSnap, holSnap, verSnap, setSnap, studSnap] = await Promise.all([
+        const [usersSnap, attSnap, holSnap, verSnap, setSnap, studSnap, rombSnap] = await Promise.all([
           window.fs.getDocs(window.fs.collection(window.db, "users")),
           window.fs.getDocs(window.fs.collection(window.db, "attendance")),
           window.fs.getDocs(window.fs.collection(window.db, "holidays")),
           window.fs.getDocs(window.fs.collection(window.db, "verifications")),
           window.fs.getDocs(window.fs.collection(window.db, "settings")),
-          window.fs.getDocs(window.fs.collection(window.db, "students")) 
+          window.fs.getDocs(window.fs.collection(window.db, "students")),
+          window.fs.getDocs(window.fs.collection(window.db, "rombels")) // Load tabel rombel
         ]);
 
         let u = usersSnap.docs.map(d => d.data());
@@ -434,6 +444,7 @@
         let h = holSnap.docs.map(d => d.data());
         let v = verSnap.docs.map(d => d.data());
         let st = studSnap.docs.map(d => d.data());
+        let rb = rombSnap.docs.map(d => d.data());
         
         let s = {};
         setSnap.forEach(d => { if(d.id === 'config') s = d.data(); });
@@ -485,6 +496,7 @@
         setSettingsDb(finalSettings);
         setUsersDb(u);
         setStudentsDb(st);
+        setRombelsDb(rb);
         setHolidaysDb(h);
         setVerificationsDb(v);
         setAttendanceDb(processedAtt);
@@ -1177,7 +1189,7 @@
         });
       };
 
-      // POPUP MODAL TAMBAH MURID BARU MANUAL
+      // POPUP MODAL TAMBAH MURID BARU MANUAL (KELAS BOLEH KOSONG)
       const handleAddStudentModal = () => {
         Swal.fire({
           title: '<h2 class="text-xl font-bold text-slate-800">Tambah Murid Baru</h2>',
@@ -1192,8 +1204,8 @@
                 <input type="date" id="swal-add-st-b" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm">
               </div>
               <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Kelas</label>
-                <input type="text" id="swal-add-st-c" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" placeholder="Cth: IV-A">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Kelas (Opsional)</label>
+                <input type="text" id="swal-add-st-c" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" placeholder="Cth: IV-A (Boleh Kosong)">
               </div>
             </div>
           `,
@@ -1203,11 +1215,11 @@
             const name = document.getElementById('swal-add-st-n').value.trim();
             const birthDate = document.getElementById('swal-add-st-b').value;
             const studentClass = document.getElementById('swal-add-st-c').value.trim();
-            if (!name || !birthDate || !studentClass) {
-              Swal.showValidationMessage('Semua data wajib diisi!');
+            if (!name || !birthDate) {
+              Swal.showValidationMessage('Nama dan Tanggal Lahir wajib diisi!');
               return false;
             }
-            return { name, birthDate, studentClass };
+            return { name, birthDate, studentClass: studentClass || '-' };
           }
         }).then(async (result) => {
           if (result.isConfirmed) {
@@ -1245,7 +1257,7 @@
               ...studObj,
               name: document.getElementById('swal-st-n').value,
               birthDate: document.getElementById('swal-st-b').value,
-              studentClass: document.getElementById('swal-st-c').value
+              studentClass: document.getElementById('swal-st-c').value || '-'
             }
           }
         }).then(async (result) => {
@@ -1272,7 +1284,7 @@
 
       const downloadExcelTemplate = () => {
         const header = [["Nama Murid", "Tanggal Lahir (YYYY-MM-DD)", "Kelas"]];
-        const sampleData = [["Ahmad Fauzi", "2015-08-12", "4-A"], ["Siti Aminah", "2016-02-24", "4-B"]];
+        const sampleData = [["Ahmad Fauzi", "2015-08-12", "4-A"], ["Siti Aminah", "2016-02-24", ""]];
         const ws = XLSX.utils.aoa_to_sheet([...header, ...sampleData]);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Format Murid");
@@ -1313,7 +1325,7 @@
                   id: Date.now() + index + Math.floor(Math.random() * 100),
                   name: String(nameKey).trim(),
                   birthDate: dateKey ? String(dateKey).trim() : "-",
-                  studentClass: String(classKey).trim()
+                  studentClass: classKey ? String(classKey).trim() : "-"
                 };
                 await window.fs.setDoc(window.fs.doc(window.db, "students", added.id.toString()), added);
                 importedStudents.push(added);
@@ -1329,6 +1341,91 @@
           }
         };
         reader.readAsBinaryString(file);
+      };
+
+      // POPUP MODAL TAMBAH ROMBEL (WALI KELAS AMBIL DARI DAFTAR GURU)
+      const handleAddRombelModal = () => {
+        const teachers = usersDb.filter(u => u.role === 'client');
+        if (teachers.length === 0) {
+          return Swal.fire("Guru Kosong", "Silakan daftarkan akun guru terlebih dahulu di menu Data Guru sebelum membuat Rombel.", "warning");
+        }
+
+        const teacherOptionsHtml = teachers.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
+
+        Swal.fire({
+          title: '<h2 class="text-xl font-bold text-slate-800">Tambah Rombel Baru</h2>',
+          html: `
+            <div class="text-left mt-2 space-y-3">
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Nama Rombel / Kelas</label>
+                <input type="text" id="swal-romb-name" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" placeholder="Cth: Kelas 4-A Unggulan">
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Tingkatan Kelas</label>
+                <input type="text" id="swal-romb-level" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" placeholder="Cth: Kelas 4">
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Nama Wali Kelas</label>
+                <select id="swal-romb-teacher" class="w-full bg-transparent outline-none font-bold text-slate-700 text-sm">
+                  <option value="" disabled selected>-- Pilih Wali Kelas --</option>
+                  ${teacherOptionsHtml}
+                </select>
+              </div>
+            </div>
+          `,
+          showCancelButton: true, confirmButtonText: 'Simpan Rombel', cancelButtonText: 'Batal', buttonsStyling: false,
+          customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm', confirmButton: 'w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all mb-2 mt-4', cancelButton: 'w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 px-4 rounded-xl transition-all', actions: 'flex flex-col w-full p-0' },
+          preConfirm: () => {
+            const name = document.getElementById('swal-romb-name').value.trim();
+            const level = document.getElementById('swal-romb-level').value.trim();
+            const teacher = document.getElementById('swal-romb-teacher').value;
+            if (!name || !level || !teacher) {
+              Swal.showValidationMessage('Semua data wajib diisi!');
+              return false;
+            }
+            return { name, level, teacher };
+          }
+        }).then((result) => {
+          if (result.isConfirmed) {
+            const added = { id: Date.now(), ...result.value };
+            window.fs.setDoc(window.fs.doc(window.db, "rombels", added.id.toString()), added)
+              .then(() => {
+                setRombelsDb(prev => [...prev, added]);
+                Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Data rombel berhasil disimpan.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+              }).catch(err => {
+                console.error(err);
+                Swal.fire("Error", "Gagal menyimpan ke Firestore.", "error");
+              });
+          }
+        });
+      };
+
+      const handleDeleteRombel = (id) => {
+        Swal.fire({
+          title: 'Hapus Rombel?', text: "Data tidak dapat dikembalikan!", icon: 'warning',
+          showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#94a3b8', confirmButtonText: 'Ya, Hapus!', cancelButtonText: 'Batal', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }
+        }).then(async (result) => {
+          if (result.isConfirmed) {
+            await window.fs.deleteDoc(window.fs.doc(window.db, "rombels", id.toString()));
+            setRombelsDb(prev => prev.filter(r => r.id !== id));
+            Swal.fire({ icon: 'success', title: 'Terhapus!', text: 'Rombel telah dihapus.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+          }
+        });
+      };
+
+      const ensureAllClientsHaveRecord = async (todayStr, skipUserId) => {
+          const clients = usersDb.filter(u => u.role === 'client');
+          let additions = [];
+          for (const client of clients) {
+              if (client.id === skipUserId) continue;
+              const hasRec = attendanceDb.some(a => a.userId === client.id && a.date === todayStr) || additions.some(a => a.userId === client.id);
+              if (!hasRec) {
+                  const pRec = { id: Date.now() + client.id, userId: client.id, date: todayStr, timeIn: '-', timeOut: '-', status: 'Menunggu' };
+                  additions.push(pRec);
+                  window.fs.setDoc(window.fs.doc(window.db, "attendance", pRec.id.toString()), pRec).catch(e => console.error(e));
+              }
+          }
+          return additions;
       };
 
       const todayStr = getLocalYYYYMMDD(currentTime);
@@ -1540,6 +1637,7 @@
               {user.role === 'admin' && <>
                 <button onClick={() => changeMenu('data guru')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'data guru' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-chalkboard-teacher w-5 text-center"></i><span className="font-semibold text-sm">Data Guru</span></button>
                 <button onClick={() => changeMenu('data murid')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'data murid' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-user-graduate w-5 text-center"></i><span className="font-semibold text-sm">Data Murid</span></button>
+                <button onClick={() => changeMenu('data rombel')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'data rombel' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-users-rectangle w-5 text-center"></i><span className="font-semibold text-sm">Data Rombel</span></button>
                 <button onClick={() => changeMenu('laporan')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'laporan' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-file-invoice w-5 text-center"></i><span className="font-semibold text-sm">Laporan Presensi</span></button>
                 <button onClick={() => changeMenu('kalender')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'kalender' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-calendar-alt w-5 text-center"></i><span className="font-semibold text-sm">Kalender</span></button>
                 <button onClick={() => changeMenu('profil')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'profil' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-building w-5 text-center"></i><span className="font-semibold text-sm">Profil Sekolah</span></button>
@@ -1552,7 +1650,7 @@
           </aside>
 
           <main className="flex-1 overflow-y-auto relative bg-slate-50/80">
-            <div className="p-4 md:p-8 max-w-6xl mx-auto min-h-full">
+            <div className="p-4 md:p-8 max-w-7xl mx-auto min-h-full">
               
               <header className="flex flex-col md:flex-row md:justify-between items-start md:items-end mb-8 space-y-5 md:space-y-0">
                 <div className="w-full md:w-auto flex flex-col">
@@ -1869,23 +1967,19 @@
             </div>
           )}
 
-          {/* MENU DATA MURID (YANG SUDAH BERSIH DARI TYPO) */}
           {activeMenu === 'data murid' && user.role === 'admin' && (
             <div className="space-y-6">
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center flex-wrap gap-2">
                   <h3 className="text-base font-bold text-slate-800 flex items-center"><i className="fas fa-user-graduate mr-2 text-purple-600 bg-purple-50 p-1.5 rounded"></i> Daftar Murid</h3>
                   <div className="flex items-center space-x-2">
-                    {/* Tombol Simbol Download Template Excel */}
                     <button type="button" onClick={downloadExcelTemplate} className="w-10 h-10 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl flex items-center justify-center text-slate-600 shadow-sm transition-all" title="Unduh Format Excel Murid">
                       <i className="fas fa-file-download text-base"></i>
                     </button>
-                    {/* Tombol Simbol Upload Excel */}
                     <label className="w-10 h-10 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl flex items-center justify-center text-emerald-600 shadow-sm cursor-pointer transition-all" title="Unggah Excel Murid">
                       <i className="fas fa-file-upload text-base"></i>
                       <input type="file" accept=".xlsx, .xls" onChange={uploadExcelData} className="hidden" />
                     </label>
-                    {/* Tombol Simbol Tambah Murid Manual Popup - SUDAH FIXED */}
                     <button type="button" onClick={handleAddStudentModal} className="w-10 h-10 bg-purple-600 hover:bg-purple-700 text-white rounded-xl flex items-center justify-center shadow-md shadow-purple-200 transition-all active:scale-95" title="Tambah Murid Manual">
                       <i className="fas fa-user-plus text-sm"></i>
                     </button>
@@ -1919,6 +2013,53 @@
                        ))}
                        {studentsDb.length === 0 && (
                          <tr><td colSpan="4" className="p-10 text-center text-slate-400 font-medium italic"><i className="fas fa-folder-open text-xl mb-1.5 block opacity-40"></i>Belum ada data murid terdaftar. Silakan tambah manual atau unggah file Excel.</td></tr>
+                       )}
+                     </tbody>
+                   </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MENU DATA ROMBEL BARU (SIMBOL ONLY BUTTONS + DINAMIS GURU DROPDOWN) */}
+          {activeMenu === 'data rombel' && user.role === 'admin' && (
+            <div className="space-y-6">
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center flex-wrap gap-2">
+                  <h3 className="text-base font-bold text-slate-800 flex items-center"><i className="fas fa-users-rectangle mr-2 text-blue-600 bg-blue-50 p-1.5 rounded"></i> Daftar Rombongan Belajar (Rombel)</h3>
+                  <div className="flex items-center space-x-2">
+                    <button type="button" onClick={handleAddRombelModal} className="w-10 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center justify-center shadow-md shadow-blue-200 transition-all active:scale-95" title="Tambah Rombel Baru">
+                      <i className="fas fa-plus text-sm"></i>
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="overflow-x-auto p-2">
+                  <table className="w-full text-left border-collapse min-w-[500px]">
+                     <thead>
+                       <tr className="text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-100">
+                         <th className="px-4 py-3 font-bold">Nama Rombel</th>
+                         <th className="px-4 py-3 font-bold">Tingkatan Kelas</th>
+                         <th className="px-4 py-3 font-bold">Wali Kelas</th>
+                         <th className="px-4 py-3 font-bold text-right">Alat</th>
+                       </tr>
+                     </thead>
+                     <tbody className="divide-y divide-slate-50">
+                       {rombelsDb.map(r => (
+                         <tr key={r.id} className="hover:bg-slate-50/80 transition-colors group">
+                           <td className="px-4 py-3 text-slate-800 font-bold text-sm">{r.name}</td>
+                           <td className="px-4 py-3 text-slate-600 text-sm font-medium">{r.level}</td>
+                           <td className="px-4 py-3 text-slate-700 text-sm font-semibold flex items-center space-x-2">
+                             <div className="w-6 h-6 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-[10px] uppercase font-bold">{r.teacher.charAt(0)}</div>
+                             <span>{r.teacher}</span>
+                           </td>
+                           <td className="px-4 py-3 text-right whitespace-nowrap space-x-2">
+                             <button onClick={() => handleDeleteRombel(r.id)} className="w-7 h-7 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-md transition-colors opacity-50 group-hover:opacity-100" title="Hapus Rombel"><i className="fas fa-trash-alt text-xs"></i></button>
+                           </td>
+                         </tr>
+                       ))}
+                       {rombelsDb.length === 0 && (
+                         <tr><td colSpan="4" className="p-10 text-center text-slate-400 font-medium italic"><i className="fas fa-folder-open text-xl mb-1.5 block opacity-40"></i>Belum ada data rombongan belajar terdaftar. Silakan klik tombol "+" di pojok kanan atas.</td></tr>
                        )}
                      </tbody>
                    </table>
