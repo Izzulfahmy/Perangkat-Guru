@@ -427,11 +427,25 @@
         return academicYearsDb.find(ay => ay.isActive) || null;
       }, [academicYearsDb]);
 
-      // FILTER DATA MURID BERDASARKAN TAHUN PELAJARAN YANG AKTIF
+      // MAP DATA MURID DENGAN PREVIEW ROMBEL KELAS SECARA DINAMIS
       const filteredStudentsDb = useMemo(() => {
         if (!activeAcademicPeriod) return [];
-        return studentsDb.filter(s => s.academicYearId === activeAcademicPeriod.id);
-      }, [studentsDb, activeAcademicPeriod]);
+        
+        // Ambil murid yang termasuk dalam periode aktif
+        const currentPeriodStudents = studentsDb.filter(s => s.academicYearId === activeAcademicPeriod.id);
+        
+        // Ambil rombel pada periode aktif saja
+        const currentPeriodRombels = rombelsDb.filter(r => r.academicYearId === activeAcademicPeriod.id);
+
+        return currentPeriodStudents.map(student => {
+          // Cari apakah ID siswa ini ada di dalam list studentIds dari suatu rombel
+          const matchedRombel = currentPeriodRombels.find(r => r.studentIds && r.studentIds.includes(student.id));
+          return {
+            ...student,
+            studentClass: matchedRombel ? matchedRombel.name : '-' // Preview nama rombel sebagai kelas
+          };
+        });
+      }, [studentsDb, rombelsDb, activeAcademicPeriod]);
 
       // FILTER DATA ROMBEL BERDASARKAN TAHUN PELAJARAN YANG AKTIF
       const filteredRombelsDb = useMemo(() => {
@@ -947,7 +961,7 @@
         });
       };
 
-      // MODIFIKASI POP-UP BUAT TAHUN PELAJARAN BARU
+      // POP-UP BUAT TAHUN PELAJARAN BARU
       const handleAddAcademicYearModal = () => {
         const defaultStartYear = new Date().getFullYear();
         const teachers = usersDb.filter(u => u.role === 'client');
@@ -1028,6 +1042,90 @@
             } catch(err) {
               console.error(err);
               Swal.fire('Error', 'Gagal menyimpan data tahun pelajaran.', 'error');
+            }
+          }
+        });
+      };
+
+      // EDIT TAHUN PELAJARAN (FITUR BARU)
+      const handleEditAcademicYear = (ayObj) => {
+        const [startYear, endYear] = ayObj.year.split('/');
+        const teachers = usersDb.filter(u => u.role === 'client');
+
+        Swal.fire({
+          title: '<h2 class="text-xl font-bold text-slate-800">Update Tahun Pelajaran</h2>',
+          html: `
+            <div class="text-left mt-2 space-y-3">
+              <div class="grid grid-cols-2 gap-3">
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Tahun Awal</label>
+                  <input type="number" id="swal-edit-ay-start" class="w-full bg-transparent outline-none font-bold text-slate-700 text-sm" value="${startYear}">
+                </div>
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Tahun Akhir</label>
+                  <input type="number" id="swal-edit-ay-end" class="w-full bg-transparent outline-none font-bold text-slate-400 text-sm" value="${endYear}" readonly>
+                </div>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Periode Semester</label>
+                <select id="swal-edit-ay-semester" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm">
+                  <option value="Ganjil" ${ayObj.semester === 'Ganjil' ? 'selected' : ''}>Ganjil</option>
+                  <option value="Genap" ${ayObj.semester === 'Genap' ? 'selected' : ''}>Genap</option>
+                </select>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Nama Kurikulum</label>
+                <input type="text" id="swal-edit-ay-curriculum" class="w-full bg-transparent outline-none font-medium text-slate-700 text-sm" value="${ayObj.curriculum}">
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Kepala Sekolah</label>
+                <select id="swal-edit-ay-headmaster" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm">
+                  ${teachers.map(t => `<option value="${t.name}" ${ayObj.headmaster === t.name ? 'selected' : ''}>${t.name}</option>`).join('')}
+                </select>
+              </div>
+            </div>
+          `,
+          showCancelButton: true, confirmButtonText: 'Update Periode', cancelButtonText: 'Batal', buttonsStyling: false,
+          customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm', confirmButton: 'w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all mb-2 mt-4', cancelButton: 'w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 px-4 rounded-xl transition-all', actions: 'flex flex-col w-full p-0' },
+          didOpen: () => {
+            const startInput = document.getElementById('swal-edit-ay-start');
+            const endInput = document.getElementById('swal-edit-ay-end');
+            if(startInput && endInput) {
+              startInput.addEventListener('input', (e) => {
+                const val = parseInt(e.target.value);
+                if(!isNaN(val)) endInput.value = val + 1;
+              });
+            }
+          },
+          preConfirm: () => {
+            const start = parseInt(document.getElementById('swal-edit-ay-start').value);
+            const end = parseInt(document.getElementById('swal-edit-ay-end').value);
+            const semester = document.getElementById('swal-edit-ay-semester').value;
+            const curriculum = document.getElementById('swal-edit-ay-curriculum').value.trim();
+            const headmaster = document.getElementById('swal-edit-ay-headmaster').value;
+
+            if (isNaN(start) || !curriculum) {
+              Swal.showValidationMessage('Tahun awal dan Nama Kurikulum wajib diisi!');
+              return false;
+            }
+
+            return {
+              ...ayObj,
+              year: `${start}/${end}`,
+              semester,
+              curriculum,
+              headmaster: headmaster || '-'
+            };
+          }
+        }).then(async (result) => {
+          if (result.isConfirmed) {
+            try {
+              await window.fs.setDoc(window.fs.doc(window.db, "academic_years", ayObj.id.toString()), result.value);
+              setAcademicYearsDb(prev => prev.map(item => item.id === ayObj.id ? result.value : item));
+              Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Tahun Pelajaran diperbarui.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+            } catch (err) {
+              console.error(err);
+              Swal.fire('Error', 'Gagal memperbarui data tahun pelajaran.', 'error');
             }
           }
         });
@@ -1330,7 +1428,7 @@
         });
       };
 
-      // MODIFIKASI POP-UP PENDAFTARAN GURU BARU
+      // POP-UP PENDAFTARAN GURU BARU
       const handleAddUserModal = () => {
         Swal.fire({
           title: '<h2 class="text-xl font-bold text-slate-800">Pendaftaran Guru Baru</h2>',
@@ -1436,6 +1534,7 @@
         });
       };
 
+      // MODIFIKASI POP-UP TAMBAH MURID (TANPA KOLOM KELAS)
       const handleAddStudentModal = () => {
         if (!activeAcademicPeriod) {
           return Swal.fire("Gagal", "Silakan buat dan aktifkan salah satu Tahun Pelajaran terlebih dahulu!", "warning");
@@ -1453,10 +1552,6 @@
                 <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Tanggal Lahir</label>
                 <input type="date" id="swal-add-st-b" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm">
               </div>
-              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Kelas (Opsional)</label>
-                <input type="text" id="swal-add-st-c" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" placeholder="Cth: IV-A">
-              </div>
             </div>
           `,
           showCancelButton: true, confirmButtonText: 'Simpan Data', cancelButtonText: 'Batal', buttonsStyling: false,
@@ -1464,12 +1559,11 @@
           preConfirm: () => {
             const name = document.getElementById('swal-add-st-n').value.trim();
             const birthDate = document.getElementById('swal-add-st-b').value;
-            const studentClass = document.getElementById('swal-add-st-c').value.trim() || "-"; 
             if (!name || !birthDate) {
               Swal.showValidationMessage('Nama dan Tanggal Lahir wajib diisi!');
               return false;
             }
-            return { name, birthDate, studentClass, academicYearId: activeAcademicPeriod.id };
+            return { name, birthDate, academicYearId: activeAcademicPeriod.id };
           }
         }).then(async (result) => {
           if (result.isConfirmed) {
@@ -1494,10 +1588,6 @@
                 <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Tanggal Lahir</label>
                 <input type="date" id="swal-st-b" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" value="${studObj.birthDate}">
               </div>
-              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Kelas (Opsional)</label>
-                <input type="text" id="swal-st-c" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" value="${studObj.studentClass === '-' ? '' : studObj.studentClass}">
-              </div>
             </div>
           `,
           showCancelButton: true, confirmButtonText: 'Update Data', cancelButtonText: 'Batal', buttonsStyling: false,
@@ -1506,8 +1596,7 @@
             return {
               ...studObj,
               name: document.getElementById('swal-st-n').value,
-              birthDate: document.getElementById('swal-st-b').value,
-              studentClass: document.getElementById('swal-st-c').value.trim() || "-"
+              birthDate: document.getElementById('swal-st-b').value
             }
           }
         }).then(async (result) => {
@@ -1525,6 +1614,22 @@
           showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#94a3b8', confirmButtonText: 'Ya, Hapus!', cancelButtonText: 'Batal', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }
         }).then(async (result) => {
           if (result.isConfirmed) {
+            // Bersihkan juga dari rombel-rombel jika murid ini terdaftar di dalamnya
+            const updatedRombels = rombelsDb.map(rb => {
+              if (rb.studentIds && rb.studentIds.includes(id)) {
+                const filteredIds = rb.studentIds.filter(sid => sid !== id);
+                const nextRb = { ...rb, studentIds: filteredIds };
+                window.fs.setDoc(window.fs.doc(window.db, "rombels", rb.id.toString()), nextRb).catch(console.error);
+                return nextRb;
+              }
+              return rb;
+            });
+            setRombelsDb(updatedRombels);
+            if (selectedRombel) {
+              const currentUpdated = updatedRombels.find(r => r.id === selectedRombel.id);
+              if (currentUpdated) setSelectedRombel(currentUpdated);
+            }
+
             await window.fs.deleteDoc(window.fs.doc(window.db, "students", id.toString()));
             setStudentsDb(prev => prev.filter(s => s.id !== id));
             Swal.fire({ icon: 'success', title: 'Terhapus!', text: 'Data murid telah dihapus.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
@@ -1620,15 +1725,17 @@
         setSelectedRombel(updatedRombel);
       };
 
+      // DOWNLOAD TEMPLATE EXCEL (TANPA KOLOM KELAS)
       const downloadExcelTemplate = () => {
-        const header = [["Nama Murid", "Tanggal Lahir (YYYY-MM-DD)", "Kelas"]];
-        const sampleData = [["Ahmad Fauzi", "2015-08-12", "4-A"], ["Siti Aminah", "2016-02-24", "4-B"]];
+        const header = [["Nama Murid", "Tanggal Lahir (YYYY-MM-DD)"]];
+        const sampleData = [["Ahmad Fauzi", "2015-08-12"], ["Siti Aminah", "2016-02-24"]];
         const ws = XLSX.utils.aoa_to_sheet([...header, ...sampleData]);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Format Murid");
         XLSX.writeFile(wb, "Format_Import_Murid.xlsx");
       };
 
+      // UPLOAD EXCEL (TANPA LOGIKA MANAJEMEN INPUT KELAS MANDIRI)
       const uploadExcelData = (e) => {
         if (!activeAcademicPeriod) {
           e.target.value = "";
@@ -1661,14 +1768,12 @@
               const row = data[index];
               const nameKey = row["Nama Murid"] || row["nama"] || row["Nama"];
               const dateKey = row["Tanggal Lahir (YYYY-MM-DD)"] || row["tanggal lahir"] || row["Tanggal Lahir"];
-              const classKey = row["Kelas"] || row["kelas"] || row["CLASS"] || "-";
               
               if (nameKey) {
                 const added = {
                   id: Date.now() + index + Math.floor(Math.random() * 100),
                   name: String(nameKey).trim(),
                   birthDate: dateKey ? String(dateKey).trim() : "-",
-                  studentClass: String(classKey).trim(),
                   academicYearId: activeAcademicPeriod.id
                 };
                 await window.fs.setDoc(window.fs.doc(window.db, "students", added.id.toString()), added);
@@ -2106,7 +2211,8 @@
                                   <button onClick={() => handleSetAcademicYearActive(ay.id)} className="bg-slate-100 hover:bg-blue-50 text-slate-500 hover:text-blue-600 px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border border-slate-200 transition-colors">Set Aktif</button>
                                 )}
                               </td>
-                              <td className="px-4 py-3 text-right whitespace-nowrap">
+                              <td className="px-4 py-3 text-right whitespace-nowrap space-x-2">
+                                <button onClick={() => handleEditAcademicYear(ay)} className="w-7 h-7 bg-blue-50 text-blue-500 hover:bg-blue-500 hover:text-white rounded-md transition-colors opacity-50 group-hover:opacity-100" title="Edit Tahun Pelajaran"><i className="fas fa-edit text-xs"></i></button>
                                 <button onClick={() => handleDeleteAcademicYear(ay.id)} className="w-7 h-7 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-md transition-colors opacity-50 group-hover:opacity-100" title="Hapus Tahun Pelajaran"><i className="fas fa-trash-alt text-xs"></i></button>
                               </td>
                             </tr>
@@ -2319,7 +2425,7 @@
                           <tr className="text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-100">
                             <th className="px-4 py-3 font-bold">Nama Lengkap Murid</th>
                             <th className="px-4 py-3 font-bold">Tanggal Lahir</th>
-                            <th className="px-4 py-3 font-bold">Kelas</th>
+                            <th className="px-4 py-3 font-bold">Rombel (Preview)</th>
                             <th className="px-4 py-3 font-bold text-right">Alat</th>
                           </tr>
                         </thead>
@@ -2331,7 +2437,11 @@
                                 <span className="text-sm">{s.name}</span>
                               </td>
                               <td className="px-4 py-3 text-slate-600 text-sm font-medium">{s.birthDate || '-'}</td>
-                              <td className="px-4 py-3 text-slate-700 text-sm font-bold">{s.studentClass || '-'}</td>
+                              <td className="px-4 py-3 text-slate-700 text-sm font-bold">
+                                <span className={`px-2 py-1 rounded ${s.studentClass !== '-' ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' : 'text-slate-400'}`}>
+                                  {s.studentClass}
+                                </span>
+                              </td>
                               <td className="px-4 py-3 text-right whitespace-nowrap space-x-2">
                                 <button onClick={() => handleEditStudent(s)} className="w-7 h-7 bg-blue-50 text-blue-500 hover:bg-blue-500 hover:text-white rounded-md transition-colors opacity-50 group-hover:opacity-100" title="Edit Murid"><i className="fas fa-edit text-xs"></i></button>
                                 <button onClick={() => handleDeleteStudent(s.id)} className="w-7 h-7 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-md transition-colors opacity-50 group-hover:opacity-100" title="Hapus Murid"><i className="fas fa-trash-alt text-xs"></i></button>
@@ -2416,7 +2526,7 @@
                                 <div key={st.id} className="flex items-center justify-between bg-white border border-slate-200 p-2.5 rounded-lg shadow-sm hover:border-indigo-300 group transition-all">
                                   <div className="text-left max-w-[75%]">
                                     <p className="text-xs font-bold text-slate-800 truncate">{st.name}</p>
-                                    <p className="text-[10px] text-slate-400 font-medium">Kls: {st.studentClass || '-'}</p>
+                                    <p className="text-[10px] text-slate-400 font-medium">Lahir: {st.birthDate || '-'}</p>
                                   </div>
                                   <button onClick={() => handleAddStudentToRombel(st.id)} className="w-6 h-6 bg-slate-100 group-hover:bg-indigo-600 text-slate-500 group-hover:text-white rounded-md flex items-center justify-center transition-colors shadow-sm" title="Masukkan ke Kelas">
                                     <i className="fas fa-chevron-right text-[10px]"></i>
@@ -2444,7 +2554,7 @@
                                   </button>
                                   <div className="text-right max-w-[75%]">
                                     <p className="text-xs font-bold text-slate-800 truncate">{st.name}</p>
-                                    <p className="text-[10px] text-indigo-400 font-medium">Kls: {st.studentClass || '-'}</p>
+                                    <p className="text-[10px] text-indigo-400 font-medium">Lahir: {st.birthDate || '-'}</p>
                                   </div>
                                 </div>
                               ))}
