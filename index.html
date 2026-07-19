@@ -421,16 +421,7 @@
         useLocation: 'true', useTime: 'true', alamat: '', desaKecamatan: '', kotaKabupaten: '', negara: 'Indonesia', kodePos: '', appScriptUrl: ''
       });
       const [currentTime, setCurrentTime] = useState(new Date());
-      const [newUser, setNewUser] = useState({ name: '', username: '', nim: '' });
       
-      const [newAcademicYear, setNewAcademicYear] = useState({
-        startYear: new Date().getFullYear(),
-        endYear: new Date().getFullYear() + 1,
-        semester: 'Ganjil',
-        curriculum: 'Kurikulum Merdeka',
-        headmaster: ''
-      });
-
       // AMBIL TAHUN PELAJARAN YANG AKTIF SAAT INI
       const activeAcademicPeriod = useMemo(() => {
         return academicYearsDb.find(ay => ay.isActive) || null;
@@ -632,11 +623,6 @@
             }
             return record;
         });
-
-        const teachersList = u.filter(user => user.role === 'client');
-        if (teachersList.length > 0 && !newAcademicYear.headmaster) {
-          setNewAcademicYear(prev => ({ ...prev, headmaster: teachersList[0].name }));
-        }
 
         setSettingsDb(finalSettings);
         setUsersDb(u);
@@ -872,7 +858,7 @@
         const isLiburSabtu = String(settingsDb.liburSabtu).toLowerCase() === 'true';
 
         if ((isLiburMinggu && day === 0) || (isLiburSabtu && day === 6)) return Swal.fire({ title: 'Hari Libur', text:'Hari ini ditetapkan sebagai hari libur.', icon:'info', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }});
-        if (holidaysDb.find(h => h.date === todayStr)) return Swal.fire({ title: 'Hari Libur', text:'Hari ini adalah tanggal merah.', icon:'info', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }});
+        if (holidaysDb.find(h => h.date === todayStr)) return Swal.fire({ title: 'Hari Libur', text:'Hari ini tanggal merah.', icon:'info', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }});
 
         const executePresensi = async () => {
           const time = currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -961,28 +947,90 @@
         });
       };
 
-      const handleAddAcademicYear = async (e) => {
-        e.preventDefault();
-        const yearTitle = `${newAcademicYear.startYear}/${newAcademicYear.endYear}`;
-        const addedId = Date.now();
-        
-        const addedData = {
-          id: addedId,
-          year: yearTitle,
-          semester: newAcademicYear.semester,
-          curriculum: newAcademicYear.curriculum,
-          headmaster: newAcademicYear.headmaster || (usersDb.filter(u=>u.role==='client')[0]?.name || '-'),
-          isActive: false
-        };
+      // MODIFIKASI POP-UP BUAT TAHUN PELAJARAN BARU
+      const handleAddAcademicYearModal = () => {
+        const defaultStartYear = new Date().getFullYear();
+        const teachers = usersDb.filter(u => u.role === 'client');
 
-        try {
-          await window.fs.setDoc(window.fs.doc(window.db, "academic_years", addedId.toString()), addedData);
-          setAcademicYearsDb(prev => [...prev, addedData]);
-          Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Tahun Pelajaran baru berhasil ditambahkan.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
-        } catch(err) {
-          console.error(err);
-          Swal.fire('Error', 'Gagal menyimpan data tahun pelajaran.', 'error');
-        }
+        Swal.fire({
+          title: '<h2 class="text-xl font-bold text-slate-800">Tambah Tahun Pelajaran</h2>',
+          html: `
+            <div class="text-left mt-2 space-y-3">
+              <div class="grid grid-cols-2 gap-3">
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Tahun Awal</label>
+                  <input type="number" id="swal-ay-start" class="w-full bg-transparent outline-none font-bold text-slate-700 text-sm" value="${defaultStartYear}">
+                </div>
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Tahun Akhir</label>
+                  <input type="number" id="swal-ay-end" class="w-full bg-transparent outline-none font-bold text-slate-400 text-sm" value="${defaultStartYear + 1}" readonly>
+                </div>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Periode Semester</label>
+                <select id="swal-ay-semester" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm">
+                  <option value="Ganjil">Ganjil</option>
+                  <option value="Genap">Genap</option>
+                </select>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Nama Kurikulum</label>
+                <input type="text" id="swal-ay-curriculum" class="w-full bg-transparent outline-none font-medium text-slate-700 text-sm" value="Kurikulum Merdeka" placeholder="Cth: Kurikulum Merdeka">
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Kepala Sekolah</label>
+                <select id="swal-ay-headmaster" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm">
+                  ${teachers.map(t => `<option value="${t.name}">${t.name}</option>`).join('')}
+                  ${teachers.length === 0 ? '<option value="">Daftarkan Guru Terlebih Dahulu</option>' : ''}
+                </select>
+              </div>
+            </div>
+          `,
+          showCancelButton: true, confirmButtonText: 'Simpan Periode', cancelButtonText: 'Batal', buttonsStyling: false,
+          customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm', confirmButton: 'w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all mb-2 mt-4', cancelButton: 'w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 px-4 rounded-xl transition-all', actions: 'flex flex-col w-full p-0' },
+          didOpen: () => {
+            const startInput = document.getElementById('swal-ay-start');
+            const endInput = document.getElementById('swal-ay-end');
+            if(startInput && endInput) {
+              startInput.addEventListener('input', (e) => {
+                const val = parseInt(e.target.value);
+                if(!isNaN(val)) endInput.value = val + 1;
+              });
+            }
+          },
+          preConfirm: () => {
+            const start = parseInt(document.getElementById('swal-ay-start').value);
+            const end = parseInt(document.getElementById('swal-ay-end').value);
+            const semester = document.getElementById('swal-ay-semester').value;
+            const curriculum = document.getElementById('swal-ay-curriculum').value.trim();
+            const headmaster = document.getElementById('swal-ay-headmaster').value;
+
+            if (isNaN(start) || !curriculum) {
+              Swal.showValidationMessage('Tahun awal dan Nama Kurikulum wajib diisi!');
+              return false;
+            }
+
+            return {
+              id: Date.now(),
+              year: `${start}/${end}`,
+              semester,
+              curriculum,
+              headmaster: headmaster || '-',
+              isActive: false
+            };
+          }
+        }).then(async (result) => {
+          if (result.isConfirmed) {
+            try {
+              await window.fs.setDoc(window.fs.doc(window.db, "academic_years", result.value.id.toString()), result.value);
+              setAcademicYearsDb(prev => [...prev, result.value]);
+              Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Tahun Pelajaran baru berhasil ditambahkan.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+            } catch(err) {
+              console.error(err);
+              Swal.fire('Error', 'Gagal menyimpan data tahun pelajaran.', 'error');
+            }
+          }
+        });
       };
 
       const handleSetAcademicYearActive = async (id) => {
@@ -1282,15 +1330,51 @@
         });
       };
 
-      const handleAddUser = async (e) => {
-        e.preventDefault();
-        if(!newUser.name || !newUser.username) return;
-        const added = { ...newUser, id: Date.now(), role: 'client' };
-        
-        await window.fs.setDoc(window.fs.doc(window.db, "users", added.id.toString()), added);
-        setUsersDb(prev => [...prev, added]);
-        setNewUser({ name: '', username: '', nim: '' });
-        Swal.fire({ icon: 'success', title: 'Tersimpan', text: 'Data guru berhasil ditambahkan.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+      // MODIFIKASI POP-UP PENDAFTARAN GURU BARU
+      const handleAddUserModal = () => {
+        Swal.fire({
+          title: '<h2 class="text-xl font-bold text-slate-800">Pendaftaran Guru Baru</h2>',
+          html: `
+            <div class="text-left mt-2 space-y-3">
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Nama Lengkap</label>
+                <input type="text" id="swal-user-name" class="w-full bg-transparent outline-none font-medium text-slate-700 text-sm" placeholder="Cth: Joko Widodo">
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Username Login</label>
+                <input type="text" id="swal-user-username" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" placeholder="Cth: joko">
+              </div>
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">NIP / NIM</label>
+                <input type="text" id="swal-user-nim" class="w-full bg-transparent outline-none font-medium text-slate-700 text-sm" placeholder="Cth: 198210...">
+              </div>
+            </div>
+          `,
+          showCancelButton: true, confirmButtonText: 'Simpan Data', cancelButtonText: 'Batal', buttonsStyling: false,
+          customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm', confirmButton: 'w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all mb-2 mt-4', cancelButton: 'w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 px-4 rounded-xl transition-all', actions: 'flex flex-col w-full p-0' },
+          preConfirm: () => {
+            const name = document.getElementById('swal-user-name').value.trim();
+            const username = document.getElementById('swal-user-username').value.trim().toLowerCase();
+            const nim = document.getElementById('swal-user-nim').value.trim() || null;
+
+            if(!name || !username) {
+              Swal.showValidationMessage('Nama Lengkap dan Username wajib diisi!');
+              return false;
+            }
+            return { id: Date.now(), name, username, nim, role: 'client' };
+          }
+        }).then(async (result) => {
+          if (result.isConfirmed) {
+            try {
+              await window.fs.setDoc(window.fs.doc(window.db, "users", result.value.id.toString()), result.value);
+              setUsersDb(prev => [...prev, result.value]);
+              Swal.fire({ icon: 'success', title: 'Tersimpan', text: 'Data guru berhasil ditambahkan.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+            } catch(e) {
+              console.error(e);
+              Swal.fire('Error', 'Gagal memproses pendaftaran guru.', 'error');
+            }
+          }
+        });
       };
 
       const handleEditUser = (clientObj) => {
@@ -1784,7 +1868,7 @@
                   <button onClick={() => changeMenu('kalender')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='kalender'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
                     <i className="fas fa-calendar-alt text-base mb-1"></i><span className="text-[9px] font-bold uppercase">Kalender</span>
                   </button>
-                </                >
+                </>
               )}
               {user.role === 'admin' && (
                 <>
@@ -1986,49 +2070,15 @@
 
               {activeMenu === 'tahun pelajaran' && user.role === 'admin' && (
                 <div className="space-y-6 animate-fadeIn">
-                  <div className="bg-white p-4 sm:p-8 rounded-2xl shadow-sm border border-slate-200">
-                    <h3 className="text-lg font-bold text-slate-800 mb-5 flex items-center"><i className="fas fa-graduation-cap mr-2 text-blue-600 bg-blue-50 p-1.5 rounded"></i> Buat Periode Tahun Pelajaran</h3>
-                    <form onSubmit={handleAddAcademicYear} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-                      <div>
-                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Tahun Awal</label>
-                        <input type="number" required value={newAcademicYear.startYear} onChange={e=>setNewAcademicYear({...newAcademicYear, startYear: parseInt(e.target.value), endYear: parseInt(e.target.value) + 1})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"/>
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Tahun Akhir</label>
-                        <input type="number" required value={newAcademicYear.endYear} readOnly className="w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-400 outline-none transition-all cursor-not-allowed"/>
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Periode Semester</label>
-                        <select value={newAcademicYear.semester} onChange={e=>setNewAcademicYear({...newAcademicYear, semester: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all">
-                          <option value="Ganjil">Ganjil</option>
-                          <option value="Genap">Genap</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Nama Kurikulum</label>
-                        <input type="text" required value={newAcademicYear.curriculum} onChange={e=>setNewAcademicYear({...newAcademicYear, curriculum: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="Cth: Kurikulum Merdeka"/>
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Kepala Sekolah (Dari Guru)</label>
-                        <select value={newAcademicYear.headmaster} onChange={e=>setNewAcademicYear({...newAcademicYear, headmaster: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all">
-                          {usersDb.filter(u => u.role === 'client').map(teacher => (
-                            <option key={teacher.id} value={teacher.name}>{teacher.name}</option>
-                          ))}
-                          {usersDb.filter(u => u.role === 'client').length === 0 && <option value="">Daftarkan Guru Terlebih Dahulu</option>}
-                        </select>
-                      </div>
-                      <div className="md:col-span-5 flex justify-end pt-2">
-                        <button type="submit" className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-xl shadow-md shadow-blue-200 transition-all active:scale-95 text-sm">
-                          <i className="fas fa-plus mr-2"></i> Tambah Tahun Pelajaran
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-
                   <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                     <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                      <h3 className="text-base font-bold text-slate-800">Daftar Konfigurasi Tahun Pelajaran</h3>
-                      <span className="text-xs font-semibold text-slate-400 italic">*Hanya satu periode yang dapat ditetapkan aktif</span>
+                      <div>
+                        <h3 className="text-base font-bold text-slate-800 flex items-center"><i className="fas fa-graduation-cap mr-2 text-blue-600 bg-blue-50 p-1.5 rounded"></i> Daftar Konfigurasi Tahun Pelajaran</h3>
+                        <p className="text-xs text-slate-400 font-medium mt-0.5">*Hanya satu periode yang dapat ditetapkan aktif</p>
+                      </div>
+                      <button type="button" onClick={handleAddAcademicYearModal} className="w-10 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center justify-center shadow-md shadow-blue-200 transition-all active:scale-95" title="Tambah Tahun Pelajaran Baru">
+                        <i className="fas fa-plus text-sm"></i>
+                      </button>
                     </div>
                     <div className="overflow-x-auto p-2">
                       <table className="w-full text-left border-collapse min-w-[600px]">
@@ -2202,26 +2252,13 @@
 
               {activeMenu === 'data guru' && user.role === 'admin' && (
                 <div className="space-y-6">
-                  <div className="bg-white p-4 sm:p-8 rounded-2xl shadow-sm border border-slate-200">
-                    <h3 className="text-lg font-bold text-slate-800 mb-5 flex items-center"><i className="fas fa-chalkboard-teacher mr-2 text-blue-600 bg-blue-50 p-1.5 rounded"></i> Pendaftaran Guru Baru</h3>
-                    <form onSubmit={handleAddUser} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                      <div>
-                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Nama Lengkap</label>
-                        <input type="text" required value={newUser.name} onChange={e=>setNewUser({...newUser, name: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="Cth: Joko Widodo"/>
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">Username Login</label>
-                        <input type="text" required value={newUser.username} onChange={e=>setNewUser({...newUser, username: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="Cth: Joko"/>
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 ml-1">NIP/NIM</label>
-                        <input type="text" value={newUser.nim} onChange={e=>setNewUser({...newUser, nim: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="Cth: 198210..."/>
-                      </div>
-                      <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl shadow-md shadow-blue-200 transition-all active:scale-95 h-[42px] text-sm">Simpan Data</button>
-                    </form>
-                  </div>
                   <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50"><h3 className="text-base font-bold text-slate-800">Daftar Akun Guru</h3></div>
+                    <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                      <h3 className="text-base font-bold text-slate-800 flex items-center"><i className="fas fa-chalkboard-teacher mr-2 text-blue-600 bg-blue-50 p-1.5 rounded"></i> Daftar Akun Guru</h3>
+                      <button type="button" onClick={handleAddUserModal} className="w-10 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center justify-center shadow-md shadow-blue-200 transition-all active:scale-95" title="Daftar Akun Guru Baru">
+                        <i className="fas fa-plus text-sm"></i>
+                      </button>
+                    </div>
                     <div className="overflow-x-auto p-2">
                       <table className="w-full text-left border-collapse min-w-[500px]">
                         <thead>
