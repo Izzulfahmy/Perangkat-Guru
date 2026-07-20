@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modul Ajar - Perangkat Guru</title>
+  
+  <link rel="icon" type="image/png" href="./asset/logo.png" />
+  <link rel="shortcut icon" type="image/png" href="./asset/logo.png" />
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js" crossorigin="anonymous"></script>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    .swal2-minimalist-popup {
+      border-radius: 32px !important;
+      padding: 1.5rem !important;
+      background: rgba(255, 255, 255, 0.98) !important;
+      backdrop-filter: blur(10px) !important;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15) !important;
+      border: 1px solid #f1f5f9 !important;
+    }
+
+    .splash-fade-out {
+      opacity: 0 !important;
+      transform: scale(1.08) !important;
+      transition: opacity 0.6s ease-out, transform 0.6s ease-out !important;
+      pointer-events: none !important;
+    }
+  </style>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+    import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBrvRy59biZZilEgp8HIpHIUA16PcaflJU",
+      authDomain: "perangkat-guru-85e8f.firebaseapp.com",
+      projectId: "perangkat-guru-85e8f",
+      storageBucket: "perangkat-guru-85e8f.firebasestorage.app",
+      messagingSenderId: "489186826165",
+      appId: "1:489186826165:web:c7b6d6a91ec70d12f06bfc",
+      measurementId: "G-6K1DGGKEES"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    window.db = getFirestore(app);
+    window.auth = getAuth(app);
+    
+    window.fs = { 
+      collection, getDocs, setDoc, doc, deleteDoc, updateDoc,
+      signInAnonymously 
+    };
+    window.dispatchEvent(new Event('firebase-ready'));
+  </script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased text-sm min-h-screen">
+
+  <div id="app-splash-screen" class="fixed inset-0 bg-gradient-to-br from-blue-600 to-blue-700 z-[9999] flex flex-col items-center justify-center text-white p-4 transition-all duration-700">
+    <div id="splash-content" class="flex flex-col items-center max-w-md text-center space-y-5">
+      <img src="./asset/logo.png" alt="Logo UNEJ" class="w-24 h-auto drop-shadow-xl animate-pulse" onerror="this.style.display='none'">
+      <div class="space-y-1">
+        <h1 class="text-2xl md:text-3xl font-black tracking-tight">Modul Ajar</h1>
+        <p class="text-xs md:text-sm text-blue-100 font-medium opacity-90">Sistem Perencanaan Pembelajaran Integratif</p>
+      </div>
+      <div class="pt-4">
+        <div class="w-10 h-10 border-4 border-white/20 border-t-white rounded-full animate-spin"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="root" class="min-h-screen w-full"></div>
+  
+  <script type="text/babel" data-presets="react,env">
+    const { useState, useEffect, useMemo } = React;
+
+    const TAB_LIST = [
+      { id: 'info-umum', title: 'Informasi Umum', icon: 'fa-circle-info' },
+      { id: 'identifikasi-murid', title: 'Identifikasi Murid', icon: 'fa-users-viewfinder' },
+      { id: 'materi-pelajaran', title: 'Materi Pelajaran', icon: 'fa-book-open-reader' },
+      { id: 'profil-pancasila', title: 'Dimensi Profil Pelajar Pancasila', icon: 'fa-award' },
+      { id: 'desain-pembelajaran', title: 'Desain Pembelajaran', icon: 'fa-compass-drafting' },
+      { id: 'kerangka-pembelajaran', title: 'Kerangka Pembelajaran', icon: 'fa-sitemap' },
+      { id: 'pengalaman-belajar', title: 'Pengalaman Belajar', icon: 'fa-chalkboard-user' },
+      { id: 'asesmen', title: 'Asesmen', icon: 'fa-list-check' },
+      { id: 'pengayaan-remedial', title: 'Pengayaan dan Remedial', icon: 'fa-chart-line' },
+      { id: 'refleksi-diri', title: 'Refleksi Diri', icon: 'fa-user-pen' }
+    ];
+
+    function App() {
+      const [isLoading, setIsLoading] = useState(true);
+      const [user, setUser] = useState(() => {
+        try {
+          const savedUser = localStorage.getItem('presensi_user');
+          return savedUser ? JSON.parse(savedUser) : null; 
+        } catch(e) { return null; }
+      });
+
+      const [rombelsDb, setRombelsDb] = useState([]);
+      const [subjectsDb, setSubjectsDb] = useState([]);
+      const [academicYearsDb, setAcademicYearsDb] = useState([]);
+      const [settingsDb, setSettingsDb] = useState({});
+
+      const [selectedRombel, setSelectedRombel] = useState(null);
+      const [selectedSubject, setSelectedSubject] = useState(null);
+      const [activeTab, setActiveTab] = useState(0);
+
+      const activeAcademicPeriod = useMemo(() => {
+        return academicYearsDb.find(ay => ay.isActive) || null;
+      }, [academicYearsDb]);
+
+      const teacherRombels = useMemo(() => {
+        if (!user || !activeAcademicPeriod) return [];
+        const userName = user.name.trim().toLowerCase();
+        
+        return rombelsDb.filter(rb => {
+          if (rb.academicYearId !== activeAcademicPeriod.id) return false;
+          const isWali = rb.homeroomTeacher && rb.homeroomTeacher.trim().toLowerCase() === userName;
+          
+          let isSubjectTeacher = false;
+          if (rb.subjectAssignments) {
+            Object.values(rb.subjectAssignments).forEach(teacher => {
+              if (teacher && teacher.trim().toLowerCase() === userName) {
+                isSubjectTeacher = true;
+              }
+            });
+          }
+          return isWali || isSubjectTeacher;
+        });
+      }, [user, rombelsDb, activeAcademicPeriod]);
+
+      const teacherSubjectsForSelectedRombel = useMemo(() => {
+        if (!selectedRombel || !user || !activeAcademicPeriod) return [];
+        const userName = user.name.trim().toLowerCase();
+        const list = [];
+
+        if (selectedRombel.subjectAssignments) {
+          Object.keys(selectedRombel.subjectAssignments).forEach(subjId => {
+            const assignedTeacher = selectedRombel.subjectAssignments[subjId];
+            if (assignedTeacher && assignedTeacher.trim().toLowerCase() === userName) {
+              const matchedSubj = subjectsDb.find(s => s.id.toString() === subjId.toString() && s.academicYearId === activeAcademicPeriod.id);
+              if (matchedSubj) {
+                list.push(matchedSubj);
+              }
+            }
+          });
+        }
+        return list;
+      }, [selectedRombel, user, subjectsDb, activeAcademicPeriod]);
+
+      useEffect(() => {
+        const loadSystemData = async () => {
+          try {
+            await window.fs.signInAnonymously(window.auth);
+            
+            const [rombSnap, subjSnap, academicSnap, setSnap] = await Promise.all([
+              window.fs.getDocs(window.fs.collection(window.db, "rombels")),
+              window.fs.getDocs(window.fs.collection(window.db, "subjects")),
+              window.fs.getDocs(window.fs.collection(window.db, "academic_years")),
+              window.fs.getDocs(window.fs.collection(window.db, "settings"))
+            ]);
+
+            setRombelsDb(rombSnap.docs.map(d => d.data()));
+            setSubjectsDb(subjSnap.docs.map(d => d.data()));
+            setAcademicYearsDb(academicSnap.docs.map(d => d.data()));
+
+            let s = {};
+            setSnap.forEach(d => { if(d.id === 'config') s = d.data(); });
+            setSettingsDb(s);
+
+            const splashDOM = document.getElementById('app-splash-screen');
+            if (splashDOM) {
+              splashDOM.classList.add('splash-fade-out');
+              setTimeout(() => splashDOM.remove(), 600);
+            }
+            setIsLoading(false);
+          } catch (e) {
+            console.error(e);
+            Swal.fire('Koneksi Gagal', 'Gagal memuat data sistem Firestore.', 'error');
+            setIsLoading(false);
+          }
+        };
+
+        const checkFirebase = () => {
+          if (window.db && window.fs) loadSystemData();
+          else window.addEventListener('firebase-ready', loadSystemData, {once: true});
+        };
+        checkFirebase();
+      }, []);
+
+      if (!user) {
+        return (
+          <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-100">
+            <div className="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center space-y-4 border border-slate-200">
+              <div className="w-16 h-16 bg-red-100 text-red-500 rounded-2xl flex items-center justify-center mx-auto text-2xl">
+                <i className="fas fa-lock"></i>
+              </div>
+              <h2 className="text-xl font-bold text-slate-800">Akses Terbatas</h2>
+              <p className="text-xs text-slate-500 font-medium leading-relaxed">Anda belum login. Silakan kembali ke portal utama untuk melakukan login terlebih dahulu.</p>
+              <a href="index.html" className="inline-block w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-xs transition-all shadow-md">
+                Kembali ke Beranda
+              </a>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="min-h-screen flex flex-col">
+          {/* TOP NAVBAR */}
+          <header className="bg-slate-900 text-white sticky top-0 z-30 shadow-md">
+            <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <a href="index.html" className="w-9 h-9 bg-slate-800 hover:bg-blue-600 text-slate-300 hover:text-white rounded-xl flex items-center justify-center transition-all shadow-sm">
+                  <i className="fas fa-arrow-left text-sm"></i>
+                </a>
+                <div>
+                  <h1 className="text-base font-black tracking-tight flex items-center gap-2">
+                    <i className="fas fa-book-open text-blue-400"></i> Modul Ajar
+                  </h1>
+                  <p className="text-[10px] text-slate-400 font-medium">Perangkat Guru &bull; {settingsDb.namaInstansi || 'Sistem Sekolah'}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <div className="text-right hidden sm:block">
+                  <p className="text-xs font-bold text-slate-200">{user.name}</p>
+                  <p className="text-[9px] font-semibold text-purple-400 uppercase tracking-wider">
+                    {activeAcademicPeriod ? `Tapel ${activeAcademicPeriod.year} (${activeAcademicPeriod.semester})` : 'Belum Ada Tapel Aktif'}
+                  </p>
+                </div>
+                <div className="w-9 h-9 bg-blue-600 text-white font-bold rounded-xl flex items-center justify-center uppercase shadow-sm">
+                  {user.name.charAt(0)}
+                </div>
+              </div>
+            </div>
+          </header>
+
+          {/* MAIN CONTENT AREA */}
+          <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 space-y-6">
+            
+            {/* BREADCRUMB NAVIGATION */}
+            <div className="flex items-center space-x-2 text-xs font-semibold text-slate-500 bg-white p-3 rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
+              <a href="index.html" className="hover:text-blue-600 transition-colors flex items-center gap-1.5 shrink-0">
+                <i className="fas fa-home"></i> Beranda
+              </a>
+              <i className="fas fa-chevron-right text-[10px] text-slate-300 shrink-0"></i>
+              <button onClick={() => { setSelectedRombel(null); setSelectedSubject(null); }} className={`hover:text-blue-600 transition-colors shrink-0 ${!selectedRombel ? 'text-blue-600 font-bold' : ''}`}>
+                Pilih Kelas
+              </button>
+              {selectedRombel && (
+                <>
+                  <i className="fas fa-chevron-right text-[10px] text-slate-300 shrink-0"></i>
+                  <button onClick={() => setSelectedSubject(null)} className={`hover:text-blue-600 transition-colors shrink-0 ${selectedRombel && !selectedSubject ? 'text-blue-600 font-bold' : ''}`}>
+                    {selectedRombel.name}
+                  </button>
+                </>
+              )}
+              {selectedSubject && (
+                <>
+                  <i className="fas fa-chevron-right text-[10px] text-slate-300 shrink-0"></i>
+                  <span className="text-blue-600 font-bold truncate">{selectedSubject.name}</span>
+                </>
+              )}
+            </div>
+
+            {/* STEP 1: PILIH KELAS / ROMBEL */}
+            {!selectedRombel && (
+              <div className="space-y-4 animate-fadeIn">
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                  <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i className="fas fa-cubes text-blue-600"></i> Pilih Kelas / Rombel Penugasan
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-1 font-medium">Pilih salah satu kelas di mana Anda terdaftar sebagai pengampu mata pelajaran atau wali kelas.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {teacherRombels.map(rb => (
+                    <div 
+                      key={rb.id} 
+                      onClick={() => setSelectedRombel(rb)}
+                      className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:border-blue-500 hover:shadow-md transition-all cursor-pointer group relative overflow-hidden flex flex-col justify-between"
+                    >
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-full -mr-6 -mt-6 group-hover:scale-110 transition-transform"></div>
+                      <div className="relative z-10 space-y-3">
+                        <span className="text-[10px] font-extrabold bg-blue-100 text-blue-700 px-3 py-1 rounded-full uppercase tracking-wider border border-blue-200">
+                          {rb.level}
+                        </span>
+                        <h3 className="text-xl font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{rb.name}</h3>
+                        <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5">
+                          <i className="fas fa-user-shield text-slate-400"></i> Wali Kelas: <b className="text-slate-700">{rb.homeroomTeacher}</b>
+                        </p>
+                      </div>
+
+                      <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-blue-600 relative z-10">
+                        <span>Buka Kelas</span>
+                        <i className="fas fa-arrow-right transform group-hover:translate-x-1 transition-transform"></i>
+                      </div>
+                    </div>
+                  ))}
+
+                  {teacherRombels.length === 0 && (
+                    <div className="col-span-full bg-white p-12 rounded-2xl border border-dashed border-slate-300 text-center text-slate-400 space-y-3">
+                      <i className="fas fa-folder-open text-4xl block opacity-40"></i>
+                      <p className="text-sm font-semibold">Anda belum ditugaskan di kelas mana pun pada periode aktif saat ini.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* STEP 2: PILIH MATA PELAJARAN */}
+            {selectedRombel && !selectedSubject && (
+              <div className="space-y-4 animate-fadeIn">
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <span className="text-[10px] font-black bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full uppercase tracking-wider border border-indigo-100">
+                      Rombel Selected
+                    </span>
+                    <h2 className="text-2xl font-black text-slate-800 tracking-tight mt-1">{selectedRombel.name} ({selectedRombel.level})</h2>
+                    <p className="text-xs text-slate-400 font-medium mt-0.5">Silakan pilih mata pelajaran yang ingin Anda kelola modul ajarnya.</p>
+                  </div>
+                  <button 
+                    onClick={() => setSelectedRombel(null)}
+                    className="self-start md:self-auto bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold px-4 py-2 rounded-xl text-xs transition-colors"
+                  >
+                    <i className="fas fa-arrow-left mr-1.5"></i> Ganti Kelas
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {teacherSubjectsForSelectedRombel.map(sb => (
+                    <div 
+                      key={sb.id} 
+                      onClick={() => setSelectedSubject(sb)}
+                      className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:border-purple-500 hover:shadow-md transition-all cursor-pointer group relative overflow-hidden flex flex-col justify-between"
+                    >
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-purple-50 rounded-bl-full -mr-6 -mt-6 group-hover:scale-110 transition-transform"></div>
+                      <div className="relative z-10 space-y-3">
+                        <span className="bg-purple-100 text-purple-700 font-mono text-[10px] font-bold px-2.5 py-1 rounded-md border border-purple-200 inline-block">
+                          {sb.code}
+                        </span>
+                        <h3 className="text-lg font-bold text-slate-800 group-hover:text-purple-600 transition-colors">{sb.name}</h3>
+                      </div>
+
+                      <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-purple-600 relative z-10">
+                        <span>Kelola Modul Ajar</span>
+                        <i className="fas fa-pen-to-square transform group-hover:translate-x-1 transition-transform"></i>
+                      </div>
+                    </div>
+                  ))}
+
+                  {teacherSubjectsForSelectedRombel.length === 0 && (
+                    <div className="col-span-full bg-white p-12 rounded-2xl border border-dashed border-slate-300 text-center text-slate-400 space-y-3">
+                      <i className="fas fa-book text-4xl block opacity-40"></i>
+                      <p className="text-sm font-semibold">Tidak ditemukan penugasan mata pelajaran khusus untuk Anda di kelas ini.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3: INTERFACE EDITOR MODUL AJAR (10 TAB NAVIGATION) */}
+            {selectedRombel && selectedSubject && (
+              <div className="space-y-6 animate-fadeIn">
+                
+                {/* HEADER MAPEL AKTIF */}
+                <div className="bg-gradient-to-r from-slate-900 to-blue-950 text-white p-6 rounded-2xl shadow-md border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="bg-blue-600 text-white font-mono text-[10px] font-bold px-2 py-0.5 rounded">
+                        {selectedSubject.code}
+                      </span>
+                      <span className="text-xs text-blue-200 font-semibold uppercase tracking-wider">{selectedRombel.name}</span>
+                    </div>
+                    <h2 className="text-2xl font-black tracking-tight mt-1">{selectedSubject.name}</h2>
+                    <p className="text-xs text-slate-400 font-medium mt-1">Pengampu: <b className="text-white">{user.name}</b></p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => setSelectedSubject(null)}
+                      className="bg-white/10 hover:bg-white/20 text-white font-bold px-4 py-2.5 rounded-xl text-xs backdrop-blur-md transition-all"
+                    >
+                      <i className="fas fa-list mr-1.5"></i> Ganti Mapel
+                    </button>
+                  </div>
+                </div>
+
+                {/* HORIZONTAL TAB NAVIGATION */}
+                <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-sm overflow-x-auto no-scrollbar">
+                  <div className="flex items-center space-x-1.5 min-w-max">
+                    {TAB_LIST.map((tab, idx) => {
+                      const isActive = activeTab === idx;
+                      return (
+                        <button
+                          key={tab.id}
+                          onClick={() => setActiveTab(idx)}
+                          className={`flex items-center space-x-2 px-4 py-3 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                            isActive 
+                              ? 'bg-blue-600 text-white shadow-md shadow-blue-200' 
+                              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                          }`}
+                        >
+                          <i className={`fas ${tab.icon} ${isActive ? 'text-white' : 'text-slate-400'}`}></i>
+                          <span>{idx + 1}. {tab.title}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* TAB CONTENT CONTAINER */}
+                <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm min-h-[420px] flex flex-col justify-between">
+                  <div className="space-y-4">
+                    <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
+                      <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2.5">
+                        <i className={`fas ${TAB_LIST[activeTab].icon} text-blue-600 bg-blue-50 p-2 rounded-xl text-base`}></i>
+                        <span>{activeTab + 1}. {TAB_LIST[activeTab].title}</span>
+                      </h3>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-full border border-slate-200">
+                        Bagian {activeTab + 1} dari 10
+                      </span>
+                    </div>
+
+                    {/* DYNAMIC TAB BODY (PLACEHOLDER FOR NOW) */}
+                    <div className="p-8 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50 my-6">
+                      <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto text-2xl mb-4">
+                        <i className={`fas ${TAB_LIST[activeTab].icon}`}></i>
+                      </div>
+                      <h4 className="text-base font-bold text-slate-700">Form {TAB_LIST[activeTab].title}</h4>
+                      <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto font-medium">
+                        Area input data untuk bagian <b>{TAB_LIST[activeTab].title}</b> akan dikembangkan pada tahap selanjutnya.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* BOTTOM NAVIGATION BUTTONS */}
+                  <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
+                    <button
+                      onClick={() => setActiveTab(prev => Math.max(0, prev - 1))}
+                      disabled={activeTab === 0}
+                      className="bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-700 font-bold px-5 py-2.5 rounded-xl text-xs transition-all flex items-center gap-2"
+                    >
+                      <i className="fas fa-chevron-left text-[10px]"></i> Sebelum
+                    </button>
+
+                    <span className="text-xs font-semibold text-slate-400 hidden sm:inline-block">
+                      {TAB_LIST[activeTab].title}
+                    </span>
+
+                    <button
+                      onClick={() => setActiveTab(prev => Math.min(TAB_LIST.length - 1, prev + 1))}
+                      disabled={activeTab === TAB_LIST.length - 1}
+                      className="bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-bold px-5 py-2.5 rounded-xl text-xs transition-all flex items-center gap-2 shadow-md shadow-blue-100"
+                    >
+                      Lanjut <i className="fas fa-chevron-right text-[10px]"></i>
+                    </button>
+                  </div>
+
+                </div>
+
+              </div>
+            )}
+
+          </main>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
