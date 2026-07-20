@@ -461,7 +461,7 @@
         return rombelsDb.filter(r => r.academicYearId === activeAcademicPeriod.id);
       }, [rombelsDb, activeAcademicPeriod]);
 
-      // --- PERBAIKAN DAN PENALATAN VARIABEL RELASI SISWA ROMBEL AGAR TIDAK UNCAUGHT REFERENCE ---
+      // HOISTING FIXED: DEFINISI VARIABEL MANAJEMEN SISWA ROMBEL AGAR MANIPULASI ABSOLUT AKTIF
       const availableStudentsForRombel = useMemo(() => {
         const assignedStudentIds = new Set();
         filteredRombelsDb.forEach(rb => {
@@ -477,10 +477,10 @@
         return filteredStudentsDb.filter(s => selectedRombel.studentIds.includes(s.id));
       }, [filteredStudentsDb, selectedRombel]);
 
-      // LOGIKA DATA KELAS & MURID YANG DIAMPU (UNTUK AKUN GURU / CLIENT)
+      // LOGIKA DATA KELAS & MURID YANG DIAMPU (SINKRONISASI MENGGUNAKAN NAMA LENGKAP UTUH AKUN GURU)
       const teacherClassInfo = useMemo(() => {
         if (user && user.role === 'client' && activeAcademicPeriod) {
-          const matchedRombel = filteredRombelsDb.find(r => r.homeroomTeacher === user.name);
+          const matchedRombel = filteredRombelsDb.find(r => r.homeroomTeacher.trim().toLowerCase() === user.name.trim().toLowerCase());
           if (matchedRombel) {
             const classStudents = filteredStudentsDb.filter(s => matchedRombel.studentIds && matchedRombel.studentIds.includes(s.id));
             return { hasClass: true, rombel: matchedRombel, students: classStudents };
@@ -949,7 +949,7 @@
         };
 
         if (String(settingsDb.useLocation).toLowerCase() === 'true') {
-          if (!settingsDb.lokasi || settingsDb.lokasi.includes('Memuat')) return Swal.fire({title: 'Error Konfigurasi', text:'Lokasi sekolah belum diset.', icon:'warning', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }});
+          if (!settingsDb.lokasi || settingsDb.lokasi.includes('Memuat')) return Swal.fire({title: 'Error Konfigurasi', text:'Locations sekolah belum diset.', icon:'warning', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }});
           setIsLocating(true);
           navigator.geolocation.getCurrentPosition(pos => {
             const off = settingsDb.lokasi.split(',');
@@ -1776,12 +1776,33 @@
                 setSelectedRombel(result.value);
               }
               Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Data rombel diperbarui.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
-            } catch (err) {
+            } catch(err) {
               console.error(err);
               Swal.fire('Error', 'Gagal memperbarui data rombel.', 'error');
             }
           }
         });
+      };
+
+      // BUG FIXED: SINKRONISASI MANIPULASI MURID ROMBEL LANGSUNG KE BASE UTAMA FIRESTORE REACTIVE
+      const handleAddStudentToRombel = async (studentId) => {
+        if (!selectedRombel) return;
+        const updatedIds = [...(selectedRombel.studentIds || []), studentId];
+        const updatedRombel = { ...selectedRombel, studentIds: updatedIds };
+        
+        await window.fs.setDoc(window.fs.doc(window.db, "rombels", selectedRombel.id.toString()), updatedRombel);
+        setRombelsDb(prev => prev.map(r => r.id === selectedRombel.id ? updatedRombel : r));
+        setSelectedRombel(updatedRombel);
+      };
+
+      const handleRemoveStudentFromRombel = async (studentId) => {
+        if (!selectedRombel) return;
+        const updatedIds = (selectedRombel.studentIds || []).filter(id => id !== studentId);
+        const updatedRombel = { ...selectedRombel, studentIds: updatedIds };
+
+        await window.fs.setDoc(window.fs.doc(window.db, "rombels", selectedRombel.id.toString()), updatedRombel);
+        setRombelsDb(prev => prev.map(r => r.id === selectedRombel.id ? updatedRombel : r));
+        setSelectedRombel(updatedRombel);
       };
 
       const downloadExcelTemplate = () => {
@@ -2660,7 +2681,7 @@
                                   </button>
                                   <div className="text-right max-w-[75%]">
                                     <p className="text-xs font-bold text-slate-800 truncate">{st.name}</p>
-                                    <p className="text-[10px] text-indigo-400 font-medium">Lahir: {formatBirthDateInId(st.birthDate)}</p>
+                                    <p className="text-[10px] text-slate-400 font-medium">Lahir: {formatBirthDateInId(st.birthDate)}</p>
                                   </div>
                                 </div>
                               ))}
