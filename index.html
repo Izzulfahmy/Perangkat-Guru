@@ -411,6 +411,8 @@
           return 'dashboard';
         }
       });
+
+      const [activeRombelTab, setActiveRombelTab] = useState('murid'); // State penunjang TAB: 'murid' atau 'mapel'
       
       const [filterMonth, setFilterMonth] = useState(() => {
         const d = new Date();
@@ -476,6 +478,24 @@
         if (!selectedRombel || !selectedRombel.studentIds) return [];
         return filteredStudentsDb.filter(s => selectedRombel.studentIds.includes(s.id));
       }, [filteredStudentsDb, selectedRombel]);
+
+      // Mengambil daftar mapel terikat pada rombel yang sedang diklik admin
+      const activeRombelSubjects = useMemo(() => {
+        if (!selectedRombel || !selectedRombel.subjectAssignments) return [];
+        return filteredSubjectsDb.filter(sb => Object.keys(selectedRombel.subjectAssignments).includes(sb.id.toString())).map(sb => {
+          return {
+            ...sb,
+            teacherName: selectedRombel.subjectAssignments[sb.id.toString()] || '-'
+          };
+        });
+      }, [filteredSubjectsDb, selectedRombel]);
+
+      // Menyeleksi sisa mapel yang belum ditugaskan di rombel ini
+      const availableSubjectsForRombel = useMemo(() => {
+        if (!selectedRombel) return filteredSubjectsDb;
+        const currentAssignedIds = new Set(Object.keys(selectedRombel.subjectAssignments || {}));
+        return filteredSubjectsDb.filter(sb => !currentAssignedIds.has(sb.id.toString()));
+      }, [filteredSubjectsDb, selectedRombel]);
 
       const teacherClassInfo = useMemo(() => {
         if (user && user.role === 'client' && activeAcademicPeriod) {
@@ -1753,6 +1773,23 @@
           showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#94a3b8', confirmButtonText: 'Ya, Hapus!', cancelButtonText: 'Batal', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }
         }).then(async (result) => {
           if (result.isConfirmed) {
+            // Bersihkan relasi tugas mapel di seluruh kelompok rombel jika mapel master dihapus
+            const cleanedRombels = rombelsDb.map(rb => {
+              if (rb.subjectAssignments && rb.subjectAssignments.hasOwnProperty(id.toString())) {
+                const nextAssignments = { ...rb.subjectAssignments };
+                delete nextAssignments[id.toString()];
+                const nextRb = { ...rb, subjectAssignments: nextAssignments };
+                window.fs.setDoc(window.fs.doc(window.db, "rombels", rb.id.toString()), nextRb).catch(console.error);
+                return nextRb;
+              }
+              return rb;
+            });
+            setRombelsDb(cleanedRombels);
+            if (selectedRombel) {
+              const currentUpdated = cleanedRombels.find(r => r.id === selectedRombel.id);
+              if (currentUpdated) setSelectedRombel(currentUpdated);
+            }
+
             await window.fs.deleteDoc(window.fs.doc(window.db, "subjects", id.toString()));
             setSubjectsDb(prev => prev.filter(s => s.id !== id));
             Swal.fire({ icon: 'success', title: 'Terhapus!', text: 'Data mata pelajaran telah dihapus.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
@@ -1800,7 +1837,7 @@
               Swal.showValidationMessage('Semua data wajib diisi!');
               return false;
             }
-            return { name, level, homeroomTeacher, studentIds: [], academicYearId: activeAcademicPeriod.id };
+            return { name, level, homeroomTeacher, studentIds: [], subjectAssignments: {}, academicYearId: activeAcademicPeriod.id };
           }
         }).then(async (result) => {
           if (result.isConfirmed) {
@@ -1887,6 +1924,43 @@
         const updatedIds = (selectedRombel.studentIds || []).filter(id => id !== studentId);
         const updatedRombel = { ...selectedRombel, studentIds: updatedIds };
 
+        setRombelsDb(prev => prev.map(r => r.id === selectedRombel.id ? updatedRombel : r));
+        setSelectedRombel(updatedRombel);
+
+        window.fs.setDoc(window.fs.doc(window.db, "rombels", selectedRombel.id.toString()), updatedRombel).catch(console.error);
+      };
+
+      // FAST REACTIVE MANIPULASI (OPTIMISTIC UI): UNTUK MAPEL ROMBEL
+      const handleAddSubjectToRombel = async (subjectId) => {
+        if (!selectedRombel) return;
+        const nextAssignments = { ...(selectedRombel.subjectAssignments || {}) };
+        nextAssignments[subjectId.toString()] = '-'; // Default pengampu kosong belum dipilih
+        
+        const updatedRombel = { ...selectedRombel, subjectAssignments: nextAssignments };
+        setRombelsDb(prev => prev.map(r => r.id === selectedRombel.id ? updatedRombel : r));
+        setSelectedRombel(updatedRombel);
+
+        window.fs.setDoc(window.fs.doc(window.db, "rombels", selectedRombel.id.toString()), updatedRombel).catch(console.error);
+      };
+
+      const handleRemoveSubjectFromRombel = async (subjectId) => {
+        if (!selectedRombel) return;
+        const nextAssignments = { ...(selectedRombel.subjectAssignments || {}) };
+        delete nextAssignments[subjectId.toString()];
+
+        const updatedRombel = { ...selectedRombel, subjectAssignments: nextAssignments };
+        setRombelsDb(prev => prev.map(r => r.id === selectedRombel.id ? updatedRombel : r));
+        setSelectedRombel(updatedRombel);
+
+        window.fs.setDoc(window.fs.doc(window.db, "rombels", selectedRombel.id.toString()), updatedRombel).catch(console.error);
+      };
+
+      const handleAssignTeacherToSubject = async (subjectId, teacherName) => {
+        if (!selectedRombel) return;
+        const nextAssignments = { ...(selectedRombel.subjectAssignments || {}) };
+        nextAssignments[subjectId.toString()] = teacherName;
+
+        const updatedRombel = { ...selectedRombel, subjectAssignments: nextAssignments };
         setRombelsDb(prev => prev.map(r => r.id === selectedRombel.id ? updatedRombel : r));
         setSelectedRombel(updatedRombel);
 
@@ -2796,73 +2870,156 @@
                   <div className="lg:col-span-7">
                     {selectedRombel && selectedRombel.academicYearId === activeAcademicPeriod?.id ? (
                       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden animate-fadeIn">
-                        <div className="p-4 sm:p-6 border-b border-slate-100 bg-indigo-900 text-white flex justify-between items-center">
+                        
+                        {/* HEADER DAN SWITCHER TAB UTAMA */}
+                        <div className="p-4 sm:p-6 bg-indigo-900 text-white border-b border-indigo-950 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                           <div>
-                            <h3 className="text-base font-bold flex items-center gap-2"><i className="fas fa-users-cog"></i> Pengaturan Anggota Kelas</h3>
-                            <p className="text-xs text-indigo-200 mt-0.5 font-medium">Rombel Aktif: <b className="text-white font-bold">{selectedRombel.name} ({selectedRombel.level})</b> | Wali: {selectedRombel.homeroomTeacher}</p>
+                            <h3 className="text-base font-bold flex items-center gap-2"><i className="fas fa-users-cog"></i> Pengaturan Rombel</h3>
+                            <p className="text-xs text-indigo-200 mt-0.5 font-medium">Rombel Aktif: <b className="text-white font-bold">{selectedRombel.name} ({selectedRombel.level})</b></p>
                           </div>
-                          <span className="text-[10px] font-bold bg-white/20 text-white px-2.5 py-1 rounded-full uppercase">ID: {selectedRombel.id.toString().slice(-4)}</span>
-                        </div>
-
-                        <div className="p-4 grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
                           
-                          <div className="md:col-span-6 bg-slate-50 rounded-xl border border-slate-200 p-3 h-[380px] flex flex-col">
-                            <div className="flex items-center justify-between border-b border-slate-200 pb-2 mb-2 shrink-0">
-                              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Belum Ada Kelas ({availableStudentsForRombel.length})</span>
-                            </div>
-                            <div className="flex-1 overflow-y-auto space-y-1.5 no-scrollbar pr-1">
-                              {availableStudentsForRombel.map(st => (
-                                <div key={st.id} className="flex items-center justify-between bg-white border border-slate-200 p-2.5 rounded-lg shadow-sm hover:border-indigo-300 group transition-all">
-                                  <div className="text-left max-w-[75%]">
-                                    <p className="text-xs font-bold text-slate-800 truncate">{st.name}</p>
-                                    <p className="text-[10px] text-slate-400 font-medium">Lahir: {formatBirthDateInId(st.birthDate)}</p>
-                                  </div>
-                                  <button onClick={() => handleAddStudentToRombel(st.id)} className="w-6 h-6 bg-slate-100 group-hover:bg-indigo-600 text-slate-500 group-hover:text-white rounded-md flex items-center justify-center transition-colors shadow-sm" title="Masukkan ke Kelas">
-                                    <i className="fas fa-chevron-right text-[10px]"></i>
-                                  </button>
-                                </div>
-                              ))}
-                              {availableStudentsForRombel.length === 0 && (
-                                <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60 text-center px-4 py-8">
-                                  <i className="fas fa-user-check text-2xl mb-2"></i>
-                                  <p className="text-xs font-semibold">Semua siswa sudah masuk kelas</p>
-                                </div>
-                              )}
-                            </div>
+                          {/* TAB CONTROLLER DENGAN UI SAMA DENGAN MENU UTAMA */}
+                          <div className="flex bg-indigo-950/60 p-1 rounded-xl border border-indigo-800/40">
+                            <button onClick={() => setActiveRombelTab('murid')} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeRombelTab === 'murid' ? 'bg-indigo-600 text-white shadow-md' : 'text-indigo-300 hover:text-white'}`}>
+                              <i className="fas fa-user-graduate text-xs"></i> Murid
+                            </button>
+                            <button onClick={() => setActiveRombelTab('mapel')} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeRombelTab === 'mapel' ? 'bg-indigo-600 text-white shadow-md' : 'text-indigo-300 hover:text-white'}`}>
+                              <i className="fas fa-book text-xs"></i> Mata Pelajaran
+                            </button>
                           </div>
-
-                          <div className="md:col-span-6 bg-indigo-50/40 rounded-xl border border-indigo-100 p-3 h-[380px] flex flex-col">
-                            <div className="flex items-center justify-between border-b border-indigo-100 pb-2 mb-2 shrink-0">
-                              <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Anggota Rombel ({activeRombelStudents.length})</span>
-                            </div>
-                            <div className="flex-1 overflow-y-auto space-y-1.5 no-scrollbar pr-1">
-                              {activeRombelStudents.map(st => (
-                                <div key={st.id} className="flex items-center justify-between bg-white border border-indigo-100 p-2.5 rounded-lg shadow-sm hover:border-red-300 group transition-all">
-                                  <button onClick={() => handleRemoveStudentFromRombel(st.id)} className="w-6 h-6 bg-slate-100 group-hover:bg-red-500 text-slate-500 group-hover:text-white rounded-md flex items-center justify-center transition-colors shadow-sm" title="Keluarkan dari Kelas">
-                                    <i className="fas fa-chevron-left text-[10px]"></i>
-                                  </button>
-                                  <div className="text-right max-w-[75%]">
-                                    <p className="text-xs font-bold text-slate-800 truncate">{st.name}</p>
-                                    <p className="text-[10px] text-slate-400 font-medium">Lahir: {formatBirthDateInId(st.birthDate)}</p>
-                                  </div>
-                                </div>
-                              ))}
-                              {activeRombelStudents.length === 0 && (
-                                <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60 text-center px-4 py-8">
-                                  <i className="fas fa-folder-open text-2xl mb-2"></i>
-                                  <p className="text-xs font-semibold">Belum ada siswa di rombel ini</p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
                         </div>
+
+                        {/* KONTEN TAB: DATA MURID ROMBEL */}
+                        {activeRombelTab === 'murid' && (
+                          <div className="p-4 grid grid-cols-1 md:grid-cols-12 gap-4 items-center animate-fadeIn">
+                            
+                            <div className="md:col-span-6 bg-slate-50 rounded-xl border border-slate-200 p-3 h-[380px] flex flex-col">
+                              <div className="flex items-center justify-between border-b border-slate-200 pb-2 mb-2 shrink-0">
+                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Belum Ada Kelas ({availableStudentsForRombel.length})</span>
+                              </div>
+                              <div className="flex-1 overflow-y-auto space-y-1.5 no-scrollbar pr-1">
+                                {availableStudentsForRombel.map(st => (
+                                  <div key={st.id} className="flex items-center justify-between bg-white border border-slate-200 p-2.5 rounded-lg shadow-sm hover:border-indigo-300 group transition-all">
+                                    <div className="text-left max-w-[75%]">
+                                      <p className="text-xs font-bold text-slate-800 truncate">{st.name}</p>
+                                      <p className="text-[10px] text-slate-400 font-medium">Lahir: {formatBirthDateInId(st.birthDate)}</p>
+                                    </div>
+                                    <button onClick={() => handleAddStudentToRombel(st.id)} className="w-6 h-6 bg-slate-100 group-hover:bg-indigo-600 text-slate-500 group-hover:text-white rounded-md flex items-center justify-center transition-colors shadow-sm" title="Masukkan ke Kelas">
+                                      <i className="fas fa-chevron-right text-[10px]"></i>
+                                    </button>
+                                  </div>
+                                ))}
+                                {availableStudentsForRombel.length === 0 && (
+                                  <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60 text-center px-4 py-8">
+                                    <i className="fas fa-user-check text-2xl mb-2"></i>
+                                    <p className="text-xs font-semibold">Semua siswa sudah masuk kelas</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="md:col-span-6 bg-indigo-50/40 rounded-xl border border-indigo-100 p-3 h-[380px] flex flex-col">
+                              <div className="flex items-center justify-between border-b border-indigo-100 pb-2 mb-2 shrink-0">
+                                <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Anggota Rombel ({activeRombelStudents.length})</span>
+                              </div>
+                              <div className="flex-1 overflow-y-auto space-y-1.5 no-scrollbar pr-1">
+                                {activeRombelStudents.map(st => (
+                                  <div key={st.id} className="flex items-center justify-between bg-white border border-indigo-100 p-2.5 rounded-lg shadow-sm hover:border-red-300 group transition-all">
+                                    <button onClick={() => handleRemoveStudentFromRombel(st.id)} className="w-6 h-6 bg-slate-100 group-hover:bg-red-500 text-slate-500 group-hover:text-white rounded-md flex items-center justify-center transition-colors shadow-sm" title="Keluarkan dari Kelas">
+                                      <i className="fas fa-chevron-left text-[10px]"></i>
+                                    </button>
+                                    <div className="text-right max-w-[75%]">
+                                      <p className="text-xs font-bold text-slate-800 truncate">{st.name}</p>
+                                      <p className="text-[10px] text-slate-400 font-medium">Lahir: {formatBirthDateInId(st.birthDate)}</p>
+                                    </div>
+                                  </div>
+                                ))}
+                                {activeRombelStudents.length === 0 && (
+                                  <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60 text-center px-4 py-8">
+                                    <i className="fas fa-folder-open text-2xl mb-2"></i>
+                                    <p className="text-xs font-semibold">Belum ada siswa di rombel ini</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                          </div>
+                        )}
+
+                        {/* KONTEN TAB: DATA MATA PELAJARAN & GURU PENGAMPU ROMBEL */}
+                        {activeRombelTab === 'mapel' && (
+                          <div className="p-4 grid grid-cols-1 md:grid-cols-12 gap-4 items-center animate-fadeIn">
+                            
+                            <div className="md:col-span-5 bg-slate-50 rounded-xl border border-slate-200 p-3 h-[380px] flex flex-col">
+                              <div className="flex items-center justify-between border-b border-slate-200 pb-2 mb-2 shrink-0">
+                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Mapel Master ({availableSubjectsForRombel.length})</span>
+                              </div>
+                              <div className="flex-1 overflow-y-auto space-y-1.5 no-scrollbar pr-1">
+                                {availableSubjectsForRombel.map(sb => (
+                                  <div key={sb.id} className="flex items-center justify-between bg-white border border-slate-200 p-2.5 rounded-lg shadow-sm hover:border-indigo-300 group transition-all">
+                                    <div className="text-left max-w-[75%]">
+                                      <p className="text-xs font-bold text-slate-800 truncate">{sb.name}</p>
+                                      <p className="text-[10px] font-bold font-mono text-slate-400">{sb.code}</p>
+                                    </div>
+                                    <button onClick={() => handleAddSubjectToRombel(sb.id)} className="w-6 h-6 bg-slate-100 group-hover:bg-indigo-600 text-slate-500 group-hover:text-white rounded-md flex items-center justify-center transition-colors shadow-sm" title="Tambahkan Mapel ke Kelas">
+                                      <i className="fas fa-chevron-right text-[10px]"></i>
+                                    </button>
+                                  </div>
+                                ))}
+                                {availableSubjectsForRombel.length === 0 && (
+                                  <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60 text-center px-4 py-8">
+                                    <i className="fas fa-book-reader text-2xl mb-2"></i>
+                                    <p className="text-xs font-semibold">Semua mapel master telah ditambahkan</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="md:col-span-7 bg-indigo-50/40 rounded-xl border border-indigo-100 p-3 h-[380px] flex flex-col">
+                              <div className="flex items-center justify-between border-b border-indigo-100 pb-2 mb-2 shrink-0">
+                                <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Tugas Mapel & Pengampu ({activeRombelSubjects.length})</span>
+                              </div>
+                              <div className="flex-1 overflow-y-auto space-y-1.5 no-scrollbar pr-1">
+                                {activeRombelSubjects.map(sb => (
+                                  <div key={sb.id} className="flex flex-col bg-white border border-indigo-100 p-3 rounded-lg shadow-sm hover:border-indigo-200 transition-all space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <div className="text-left max-w-[80%]">
+                                        <p className="text-xs font-bold text-slate-800">{sb.name}</p>
+                                        <p className="text-[9px] font-bold font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded inline-block mt-0.5">{sb.code}</p>
+                                      </div>
+                                      <button onClick={() => handleRemoveSubjectFromRombel(sb.id)} className="w-6 h-6 bg-slate-50 hover:bg-red-500 text-slate-400 hover:text-white rounded-md flex items-center justify-center transition-colors shadow-sm" title="Keluarkan Mapel dari Kelas">
+                                        <i className="fas fa-times text-[10px]"></i>
+                                      </button>
+                                    </div>
+                                    <div className="pt-1.5 border-t border-slate-100 flex flex-col">
+                                      <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-1">Guru Pengampu Laporan</label>
+                                      <select value={sb.teacherName} onChange={(e) => handleAssignTeacherToSubject(sb.id, e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-1.5 font-semibold text-slate-700 text-xs outline-none focus:border-indigo-500 transition-colors">
+                                        <option value="-">-- Pilih / Belum Ditugaskan --</option>
+                                        {usersDb.filter(u => u.role === 'client').map(t => (
+                                          <option key={t.id} value={t.name}>{t.name}</option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                  </div>
+                                ))}
+                                {activeRombelSubjects.length === 0 && (
+                                  <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60 text-center px-4 py-8">
+                                    <i className="fas fa-book text-2xl mb-2"></i>
+                                    <p className="text-xs font-semibold">Belum ada mata pelajaran terikat di rombel ini</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                          </div>
+                        )}
+
                       </div>
                     ) : (
                       <div className="bg-white border border-dashed border-slate-300 rounded-2xl h-[456px] flex flex-col items-center justify-center text-slate-400 p-8">
                         <div className="w-16 h-16 bg-slate-50 border border-slate-200 rounded-full flex items-center justify-center mb-4 text-slate-400 text-2xl shadow-sm"><i className="fas fa-mouse-pointer"></i></div>
-                        <h4 className="text-base font-bold text-slate-700">Manajemen Anggota Kelas</h4>
-                        <p className="text-xs text-slate-400 mt-1 max-w-xs text-center font-medium">Silakan klik salah satu kelompok rombel di tabel sebelah kiri untuk mengonfigurasi atau memasukkan nama siswa pada periode aktif.</p>
+                        <h4 className="text-base font-bold text-slate-700">Manajemen Anggota & Kurikulum</h4>
+                        <p className="text-xs text-slate-400 mt-1 max-w-xs text-center font-medium">Silakan klik salah satu kelompok rombel di tabel sebelah kiri untuk mengonfigurasi data murid serta mata pelajaran pada periode aktif.</p>
                       </div>
                     )}
                   </div>
