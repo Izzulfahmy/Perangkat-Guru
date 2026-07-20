@@ -461,6 +461,22 @@
         return rombelsDb.filter(r => r.academicYearId === activeAcademicPeriod.id);
       }, [rombelsDb, activeAcademicPeriod]);
 
+      // --- PERBAIKAN DAN PENALATAN VARIABEL RELASI SISWA ROMBEL AGAR TIDAK UNCAUGHT REFERENCE ---
+      const availableStudentsForRombel = useMemo(() => {
+        const assignedStudentIds = new Set();
+        filteredRombelsDb.forEach(rb => {
+          if (rb.studentIds && Array.isArray(rb.studentIds)) {
+            rb.studentIds.forEach(id => assignedStudentIds.add(id));
+          }
+        });
+        return filteredStudentsDb.filter(s => !assignedStudentIds.has(s.id));
+      }, [filteredStudentsDb, filteredRombelsDb]);
+
+      const activeRombelStudents = useMemo(() => {
+        if (!selectedRombel || !selectedRombel.studentIds) return [];
+        return filteredStudentsDb.filter(s => selectedRombel.studentIds.includes(s.id));
+      }, [filteredStudentsDb, selectedRombel]);
+
       // LOGIKA DATA KELAS & MURID YANG DIAMPU (UNTUK AKUN GURU / CLIENT)
       const teacherClassInfo = useMemo(() => {
         if (user && user.role === 'client' && activeAcademicPeriod) {
@@ -981,7 +997,7 @@
         });
       };
 
-      // POP-UP BUAT TAHUN PELAJARAN BARu
+      // POP-UP BUAT TAHUN PELAJARAN BARU
       const handleAddAcademicYearModal = () => {
         const defaultStartYear = new Date().getFullYear();
         const teachers = usersDb.filter(u => u.role === 'client');
@@ -1143,7 +1159,7 @@
               await window.fs.setDoc(window.fs.doc(window.db, "academic_years", ayObj.id.toString()), result.value);
               setAcademicYearsDb(prev => prev.map(item => item.id === ayObj.id ? result.value : item));
               Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Tahun Pelajaran diperbarui.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
-            } catch (err) {
+            } catch(err) {
               console.error(err);
               Swal.fire('Error', 'Gagal memperbarui data tahun pelajaran.', 'error');
             }
@@ -2203,7 +2219,7 @@
                   </div>
               )}
 
-              {/* MENU BARU: INFORMASI GURU (UNTUK PERAN GURU / CLIENT) */}
+              {/* MENU INFORMASI GURU (SINKRONISASI AKTIF BEBAS ERROR) */}
               {activeMenu === 'informasi-guru' && user.role === 'client' && (
                 <div className="space-y-6 animate-fadeIn">
                   {teacherClassInfo.hasClass ? (
@@ -2214,7 +2230,7 @@
                           <h2 className="text-2xl font-black tracking-tight mt-2">{teacherClassInfo.rombel.name}</h2>
                           <p className="text-xs text-slate-400 font-medium mt-1">Tingkatan: <b className="text-white">{teacherClassInfo.rombel.level}</b> | Instansi: {settingsDb.namaInstansi}</p>
                         </div>
-                        <div className="bg-white/5 backdrop-blur-md px-5 py-3 rounded-xl border border-white/10 text-right md:text-right text-left">
+                        <div className="bg-white/5 backdrop-blur-md px-5 py-3 rounded-xl border border-white/10 text-left">
                           <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Total Anggota Kelas</p>
                           <p className="text-3xl font-black mt-1 text-white tabular-nums">{teacherClassInfo.students.length} <span className="text-sm font-medium text-slate-400">Siswa</span></p>
                         </div>
@@ -2222,7 +2238,7 @@
 
                       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                         <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50">
-                          <h3 className="text-base font-bold text-slate-800 flex items-center"><i className="fas fa-users text-indigo-600 mr-2"></i>Daftar Nama Murid Kelompok Rombel</h3>
+                          <h3 className="text-base font-bold text-slate-800 flex items-center"><i className="fas fa-users text-indigo-600 mr-2"></i>Daftar Anggota Murid Rombel</h3>
                         </div>
                         <div className="overflow-x-auto p-2">
                           <table className="w-full text-left border-collapse min-w-[500px]">
@@ -2244,6 +2260,9 @@
                                   <td className="px-4 py-3 text-slate-600 text-sm font-medium">{formatBirthDateInId(st.birthDate)}</td>
                                 </tr>
                               ))}
+                              {teacherClassInfo.students.length === 0 && (
+                                <tr><td colSpan="3" className="p-10 text-center text-slate-400 font-medium italic"><i className="fas fa-folder-open text-xl mb-1.5 block opacity-40"></i>Rombel ini belum dikonfigurasi isinya oleh admin.</td></tr>
+                              )}
                             </tbody>
                           </table>
                         </div>
