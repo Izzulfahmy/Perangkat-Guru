@@ -315,7 +315,7 @@
 
             <div className="grid grid-cols-7 gap-1 md:gap-2">
               {['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].map((day, i) => (
-                <div key={day} className={`pb-2 text-center text-[10px] font-bold uppercase tracking-wider ${i === 6 ? 'text-red-500' : 'text-slate-400'}`}>
+                <div key={day} className="pb-2 text-center text-[10px] font-bold uppercase tracking-wider text-slate-400">
                   {day}
                 </div>
               ))}
@@ -460,6 +460,18 @@
         if (!activeAcademicPeriod) return [];
         return rombelsDb.filter(r => r.academicYearId === activeAcademicPeriod.id);
       }, [rombelsDb, activeAcademicPeriod]);
+
+      // LOGIKA DATA KELAS & MURID YANG DIAMPU (UNTUK AKUN GURU / CLIENT)
+      const teacherClassInfo = useMemo(() => {
+        if (user && user.role === 'client' && activeAcademicPeriod) {
+          const matchedRombel = filteredRombelsDb.find(r => r.homeroomTeacher === user.name);
+          if (matchedRombel) {
+            const classStudents = filteredStudentsDb.filter(s => matchedRombel.studentIds && matchedRombel.studentIds.includes(s.id));
+            return { hasClass: true, rombel: matchedRombel, students: classStudents };
+          }
+        }
+        return { hasClass: false, rombel: null, students: [] };
+      }, [user, filteredRombelsDb, filteredStudentsDb, activeAcademicPeriod]);
       
       const ensureAllClientsHaveRecord = async (targetDateStr, currentUserId) => {
         const clients = usersDb.filter(u => u.role === 'client');
@@ -969,7 +981,7 @@
         });
       };
 
-      // POP-UP BUAT TAHUN PELAJARAN BARU
+      // POP-UP BUAT TAHUN PELAJARAN BARu
       const handleAddAcademicYearModal = () => {
         const defaultStartYear = new Date().getFullYear();
         const teachers = usersDb.filter(u => u.role === 'client');
@@ -1696,7 +1708,7 @@
         });
       };
 
-      // EDIT DATA ROMBEL (FITUR BARU)
+      // EDIT DATA ROMBEL
       const handleEditRombel = (rombObj) => {
         const teachers = usersDb.filter(u => u.role === 'client');
 
@@ -1754,42 +1766,6 @@
             }
           }
         });
-      };
-
-      const handleDeleteRombel = (id) => {
-        Swal.fire({
-          title: 'Hapus Rombel?', text: "Data rombel tidak dapat dikembalikan!", icon: 'warning',
-          showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#94a3b8', confirmButtonText: 'Ya, Hapus!', cancelButtonText: 'Batal', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }
-        }).then(async (result) => {
-          if (result.isConfirmed) {
-            await window.fs.deleteDoc(window.fs.doc(window.db, "rombels", id.toString()));
-            setRombelsDb(prev => prev.filter(r => r.id !== id));
-            if (selectedRombel && selectedRombel.id === id) {
-              setSelectedRombel(null);
-            }
-            Swal.fire({ icon: 'success', title: 'Terhapus!', text: 'Data rombel telah dihapus.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
-          }
-        });
-      };
-
-      const handleAddStudentToRombel = async (studentId) => {
-        if (!selectedRombel) return;
-        const updatedIds = [...(selectedRombel.studentIds || []), studentId];
-        const updatedRombel = { ...selectedRombel, studentIds: updatedIds };
-        
-        await window.fs.setDoc(window.fs.doc(window.db, "rombels", selectedRombel.id.toString()), updatedRombel);
-        setRombelsDb(prev => prev.map(r => r.id === selectedRombel.id ? updatedRombel : r));
-        setSelectedRombel(updatedRombel);
-      };
-
-      const handleRemoveStudentFromRombel = async (studentId) => {
-        if (!selectedRombel) return;
-        const updatedIds = (selectedRombel.studentIds || []).filter(id => id !== studentId);
-        const updatedRombel = { ...selectedRombel, studentIds: updatedIds };
-
-        await window.fs.setDoc(window.fs.doc(window.db, "rombels", selectedRombel.id.toString()), updatedRombel);
-        setRombelsDb(prev => prev.map(r => r.id === selectedRombel.id ? updatedRombel : r));
-        setSelectedRombel(updatedRombel);
       };
 
       const downloadExcelTemplate = () => {
@@ -1941,21 +1917,6 @@
         });
       }, [usersDb, attendanceDb, holidaysDb, settingsDb, filterMonth, currentTime]);
 
-      const availableStudentsForRombel = useMemo(() => {
-        const assignedStudentIds = new Set();
-        filteredRombelsDb.forEach(rb => {
-          if (rb.studentIds && Array.isArray(rb.studentIds)) {
-            rb.studentIds.forEach(id => assignedStudentIds.add(id));
-          }
-        });
-        return filteredStudentsDb.filter(s => !assignedStudentIds.has(s.id));
-      }, [filteredStudentsDb, filteredRombelsDb]);
-
-      const activeRombelStudents = useMemo(() => {
-        if (!selectedRombel || !selectedRombel.studentIds) return [];
-        return filteredStudentsDb.filter(s => selectedRombel.studentIds.includes(s.id));
-      }, [filteredStudentsDb, selectedRombel]);
-
       if (isSystemEmpty) return (
         <div className="h-screen flex items-center justify-center p-4 bg-slate-100 relative overflow-hidden">
           <div className="bg-white p-8 md:p-10 rounded-3xl shadow-xl w-full max-w-md border border-slate-100 relative z-10">
@@ -2026,7 +1987,7 @@
                  </button>
                </div>
             </div>
-            <div className={`grid gap-1 ${user.role === 'admin' ? 'grid-cols-7' : 'grid-cols-3'}`}>
+            <div className={`grid gap-1 ${user.role === 'admin' ? 'grid-cols-7' : 'grid-cols-4'}`}>
               <button onClick={() => changeMenu('dashboard')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='dashboard'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
                 <i className="fas fa-home text-base mb-1"></i><span className="text-[9px] font-bold uppercase">Beranda</span>
               </button>
@@ -2034,6 +1995,9 @@
                 <>
                   <button onClick={() => changeMenu('riwayat')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='riwayat'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
                     <i className="fas fa-history text-base mb-1"></i><span className="text-[9px] font-bold uppercase">Riwayat</span>
+                  </button>
+                  <button onClick={() => changeMenu('informasi-guru')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='informasi-guru'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
+                    <i className="fas fa-id-card text-base mb-1"></i><span className="text-[9px] font-bold uppercase">Info</span>
                   </button>
                   <button onClick={() => changeMenu('kalender')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='kalender'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
                     <i className="fas fa-calendar-alt text-base mb-1"></i><span className="text-[9px] font-bold uppercase">Kalender</span>
@@ -2077,6 +2041,7 @@
               {user.role === 'client' && (
                 <>
                   <button onClick={() => changeMenu('riwayat')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'riwayat' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-history w-5 text-center"></i><span className="font-semibold text-sm">Riwayat Presensi</span></button>
+                  <button onClick={() => changeMenu('informasi-guru')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'informasi-guru' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-id-card w-5 text-center"></i><span className="font-semibold text-sm">Informasi Guru</span></button>
                   <button onClick={() => changeMenu('kalender')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'kalender' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-calendar-alt w-5 text-center"></i><span className="font-semibold text-sm">Kalender</span></button>
                 </>
               )}
@@ -2236,6 +2201,62 @@
                        </table>
                      </div>
                   </div>
+              )}
+
+              {/* MENU BARU: INFORMASI GURU (UNTUK PERAN GURU / CLIENT) */}
+              {activeMenu === 'informasi-guru' && user.role === 'client' && (
+                <div className="space-y-6 animate-fadeIn">
+                  {teacherClassInfo.hasClass ? (
+                    <div className="grid grid-cols-1 gap-6">
+                      <div className="bg-gradient-to-r from-indigo-950 to-slate-900 p-6 sm:p-8 rounded-2xl shadow-xl text-white border border-indigo-900 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                          <span className="text-[10px] font-black bg-indigo-600/30 text-indigo-400 px-3 py-1 rounded-full uppercase tracking-wider border border-indigo-500/20">Wali Kelas Aktif</span>
+                          <h2 className="text-2xl font-black tracking-tight mt-2">{teacherClassInfo.rombel.name}</h2>
+                          <p className="text-xs text-slate-400 font-medium mt-1">Tingkatan: <b className="text-white">{teacherClassInfo.rombel.level}</b> | Instansi: {settingsDb.namaInstansi}</p>
+                        </div>
+                        <div className="bg-white/5 backdrop-blur-md px-5 py-3 rounded-xl border border-white/10 text-right md:text-right text-left">
+                          <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Total Anggota Kelas</p>
+                          <p className="text-3xl font-black mt-1 text-white tabular-nums">{teacherClassInfo.students.length} <span className="text-sm font-medium text-slate-400">Siswa</span></p>
+                        </div>
+                      </div>
+
+                      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50">
+                          <h3 className="text-base font-bold text-slate-800 flex items-center"><i className="fas fa-users text-indigo-600 mr-2"></i>Daftar Nama Murid Kelompok Rombel</h3>
+                        </div>
+                        <div className="overflow-x-auto p-2">
+                          <table className="w-full text-left border-collapse min-w-[500px]">
+                            <thead>
+                              <tr className="text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-100">
+                                <th className="px-4 py-3 font-bold">No</th>
+                                <th className="px-4 py-3 font-bold">Nama Lengkap Murid</th>
+                                <th className="px-4 py-3 font-bold">Tanggal Lahir</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50">
+                              {teacherClassInfo.students.map((st, sIdx) => (
+                                <tr key={st.id} className="hover:bg-slate-50/80 transition-colors">
+                                  <td className="px-4 py-3 text-slate-400 font-bold tabular-nums text-sm w-12">{sIdx + 1}</td>
+                                  <td className="px-4 py-3 text-slate-800 font-semibold flex items-center space-x-3">
+                                    <div className="w-7 h-7 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs uppercase">{st.name.charAt(0)}</div>
+                                    <span className="text-sm">{st.name}</span>
+                                  </td>
+                                  <td className="px-4 py-3 text-slate-600 text-sm font-medium">{formatBirthDateInId(st.birthDate)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-white border border-dashed border-slate-300 rounded-2xl p-12 flex flex-col items-center justify-center text-slate-400 text-center">
+                      <div className="w-16 h-16 bg-slate-50 border border-slate-200 rounded-full flex items-center justify-center mb-4 text-2xl shadow-sm"><i className="fas fa-id-card"></i></div>
+                      <h4 className="text-base font-bold text-slate-700">Informasi Rombel Kosong</h4>
+                      <p className="text-xs text-slate-400 mt-1 max-w-sm font-medium">Anda belum didaftarkan sebagai Wali Kelas di rombel manapun untuk periode Tahun Pelajaran yang aktif saat ini. Silakan hubungi operator admin sistem.</p>
+                    </div>
+                  )}
+                </div>
               )}
 
               {activeMenu === 'tahun pelajaran' && user.role === 'admin' && (
