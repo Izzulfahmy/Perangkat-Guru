@@ -412,7 +412,7 @@
         }
       });
 
-      const [activeRombelTab, setActiveRombelTab] = useState('murid'); // State penunjang TAB: 'murid' atau 'mapel'
+      const [activeRombelTab, setActiveRombelTab] = useState('murid'); 
       
       const [filterMonth, setFilterMonth] = useState(() => {
         const d = new Date();
@@ -479,7 +479,6 @@
         return filteredStudentsDb.filter(s => selectedRombel.studentIds.includes(s.id));
       }, [filteredStudentsDb, selectedRombel]);
 
-      // Mengambil daftar mapel terikat pada rombel yang sedang diklik admin
       const activeRombelSubjects = useMemo(() => {
         if (!selectedRombel || !selectedRombel.subjectAssignments) return [];
         return filteredSubjectsDb.filter(sb => Object.keys(selectedRombel.subjectAssignments).includes(sb.id.toString())).map(sb => {
@@ -490,7 +489,6 @@
         });
       }, [filteredSubjectsDb, selectedRombel]);
 
-      // Menyeleksi sisa mapel yang belum ditugaskan di rombel ini
       const availableSubjectsForRombel = useMemo(() => {
         if (!selectedRombel) return filteredSubjectsDb;
         const currentAssignedIds = new Set(Object.keys(selectedRombel.subjectAssignments || {}));
@@ -507,6 +505,30 @@
         }
         return { hasClass: false, rombel: null, students: [] };
       }, [user, filteredRombelsDb, filteredStudentsDb, activeAcademicPeriod]);
+
+      // Mengambil daftar tugas mata pelajaran khusus untuk guru yang login saat ini
+      const teacherSubjectAssignments = useMemo(() => {
+        if (!user || user.role !== 'client' || !activeAcademicPeriod) return [];
+        let list = [];
+        filteredRombelsDb.forEach(rb => {
+          if (rb.subjectAssignments) {
+            Object.keys(rb.subjectAssignments).forEach(subjId => {
+              if (rb.subjectAssignments[subjId].trim().toLowerCase() === user.name.trim().toLowerCase()) {
+                const mapelObj = filteredSubjectsDb.find(s => s.id.toString() === subjId);
+                if (mapelObj) {
+                  list.push({
+                    rombelName: rb.name,
+                    rombelLevel: rb.level,
+                    subjectCode: mapelObj.code,
+                    subjectName: mapelObj.name
+                  });
+                }
+              }
+            });
+          }
+        });
+        return list;
+      }, [user, filteredRombelsDb, filteredSubjectsDb, activeAcademicPeriod]);
       
       const ensureAllClientsHaveRecord = async (targetDateStr, currentUserId) => {
         const clients = usersDb.filter(u => u.role === 'client');
@@ -1773,7 +1795,6 @@
           showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#94a3b8', confirmButtonText: 'Ya, Hapus!', cancelButtonText: 'Batal', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }
         }).then(async (result) => {
           if (result.isConfirmed) {
-            // Bersihkan relasi tugas mapel di seluruh kelompok rombel jika mapel master dihapus
             const cleanedRombels = rombelsDb.map(rb => {
               if (rb.subjectAssignments && rb.subjectAssignments.hasOwnProperty(id.toString())) {
                 const nextAssignments = { ...rb.subjectAssignments };
@@ -1930,11 +1951,10 @@
         window.fs.setDoc(window.fs.doc(window.db, "rombels", selectedRombel.id.toString()), updatedRombel).catch(console.error);
       };
 
-      // FAST REACTIVE MANIPULASI (OPTIMISTIC UI): UNTUK MAPEL ROMBEL
       const handleAddSubjectToRombel = async (subjectId) => {
         if (!selectedRombel) return;
         const nextAssignments = { ...(selectedRombel.subjectAssignments || {}) };
-        nextAssignments[subjectId.toString()] = '-'; // Default pengampu kosong belum dipilih
+        nextAssignments[subjectId.toString()] = '-'; 
         
         const updatedRombel = { ...selectedRombel, subjectAssignments: nextAssignments };
         setRombelsDb(prev => prev.map(r => r.id === selectedRombel.id ? updatedRombel : r));
@@ -2206,7 +2226,7 @@
                  </button>
                </div>
             </div>
-            <div className={`grid gap-1 ${user.role === 'admin' ? 'grid-cols-8' : 'grid-cols-4'}`}>
+            <div className={`grid gap-1 ${user.role === 'admin' ? 'grid-cols-7' : (teacherClassInfo.hasClass ? 'grid-cols-5' : 'grid-cols-4')}`}>
               <button onClick={() => changeMenu('dashboard')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='dashboard'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
                 <i className="fas fa-home text-base mb-1"></i><span className="text-[9px] font-bold uppercase">Beranda</span>
               </button>
@@ -2215,8 +2235,13 @@
                   <button onClick={() => changeMenu('riwayat')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='riwayat'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
                     <i className="fas fa-history text-base mb-1"></i><span className="text-[9px] font-bold uppercase">Riwayat</span>
                   </button>
-                  <button onClick={() => changeMenu('informasi-guru')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='informasi-guru'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
-                    <i className="fas fa-id-card text-base mb-1"></i><span className="text-[9px] font-bold uppercase">Info</span>
+                  {teacherClassInfo.hasClass && (
+                    <button onClick={() => changeMenu('wali-kelas')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='wali-kelas'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
+                      <i className="fas fa-id-card text-base mb-1"></i><span className="text-[9px] font-bold uppercase">Wali Kelas</span>
+                    </button>
+                  )}
+                  <button onClick={() => changeMenu('penugasan')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='penugasan'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
+                    <i className="fas fa-tasks text-base mb-1"></i><span className="text-[9px] font-bold uppercase">Tugas</span>
                   </button>
                   <button onClick={() => changeMenu('kalender')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='kalender'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
                     <i className="fas fa-calendar-alt text-base mb-1"></i><span className="text-[9px] font-bold uppercase">Kalender</span>
@@ -2263,7 +2288,10 @@
               {user.role === 'client' && (
                 <>
                   <button onClick={() => changeMenu('riwayat')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'riwayat' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-history w-5 text-center"></i><span className="font-semibold text-sm">Riwayat Presensi</span></button>
-                  <button onClick={() => changeMenu('informasi-guru')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'informasi-guru' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-id-card w-5 text-center"></i><span className="font-semibold text-sm">Informasi Guru</span></button>
+                  {teacherClassInfo.hasClass && (
+                    <button onClick={() => changeMenu('wali-kelas')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'wali-kelas' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-id-card w-5 text-center"></i><span className="font-semibold text-sm">Wali Kelas</span></button>
+                  )}
+                  <button onClick={() => changeMenu('penugasan')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'penugasan' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-tasks w-5 text-center"></i><span className="font-semibold text-sm">Penugasan Pengampu</span></button>
                   <button onClick={() => changeMenu('kalender')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'kalender' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-calendar-alt w-5 text-center"></i><span className="font-semibold text-sm">Kalender</span></button>
                 </>
               )}
@@ -2426,62 +2454,93 @@
                   </div>
               )}
 
-              {/* MENU INFORMASI GURU */}
-              {activeMenu === 'informasi-guru' && user.role === 'client' && (
+              {/* MENU WALI KELAS (HANYA JIKA LOGIKA GURU TERBACA SEBAGAI WALIKELAS AKTIF) */}
+              {activeMenu === 'wali-kelas' && user.role === 'client' && teacherClassInfo.hasClass && (
                 <div className="space-y-6 animate-fadeIn">
-                  {teacherClassInfo.hasClass ? (
-                    <div className="grid grid-cols-1 gap-6">
-                      <div className="bg-gradient-to-r from-indigo-950 to-slate-900 p-6 sm:p-8 rounded-2xl shadow-xl text-white border border-indigo-900 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div>
-                          <span className="text-[10px] font-black bg-indigo-600/30 text-indigo-400 px-3 py-1 rounded-full uppercase tracking-wider border border-indigo-500/20">Wali Kelas Aktif</span>
-                          <h2 className="text-2xl font-black tracking-tight mt-2">{teacherClassInfo.rombel.name}</h2>
-                          <p className="text-xs text-slate-400 font-medium mt-1">Tingkatan: <b className="text-white">{teacherClassInfo.rombel.level}</b> | Instansi: {settingsDb.namaInstansi}</p>
-                        </div>
-                        <div className="bg-white/5 backdrop-blur-md px-5 py-3 rounded-xl border border-white/10 text-left">
-                          <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Total Anggota Kelas</p>
-                          <p className="text-3xl font-black mt-1 text-white tabular-nums">{teacherClassInfo.students.length} <span className="text-sm font-medium text-slate-400">Siswa</span></p>
-                        </div>
+                  <div className="grid grid-cols-1 gap-6">
+                    <div className="bg-gradient-to-r from-indigo-950 to-slate-900 p-6 sm:p-8 rounded-2xl shadow-xl text-white border border-indigo-900 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div>
+                        <span className="text-[10px] font-black bg-indigo-600/30 text-indigo-400 px-3 py-1 rounded-full uppercase tracking-wider border border-indigo-500/20">Wali Kelas Aktif</span>
+                        <h2 className="text-2xl font-black tracking-tight mt-2">{teacherClassInfo.rombel.name}</h2>
+                        <p className="text-xs text-slate-400 font-medium mt-1">Tingkatan: <b className="text-white">{teacherClassInfo.rombel.level}</b> | Instansi: {settingsDb.namaInstansi}</p>
                       </div>
+                      <div className="bg-white/5 backdrop-blur-md px-5 py-3 rounded-xl border border-white/10 text-left">
+                        <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Total Anggota Kelas</p>
+                        <p className="text-3xl font-black mt-1 text-white tabular-nums">{teacherClassInfo.students.length} <span className="text-sm font-medium text-slate-400">Sisnan</span></p>
+                      </div>
+                    </div>
 
-                      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                        <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50">
-                          <h3 className="text-base font-bold text-slate-800 flex items-center"><i className="fas fa-users text-indigo-600 mr-2"></i>Daftar Anggota Murid Rombel</h3>
-                        </div>
-                        <div className="overflow-x-auto p-2">
-                          <table className="w-full text-left border-collapse min-w-[500px]">
-                            <thead>
-                              <tr className="text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-100">
-                                <th className="px-4 py-3 font-bold">No</th>
-                                <th className="px-4 py-3 font-bold">Nama Lengkap Murid</th>
-                                <th className="px-4 py-3 font-bold">Tanggal Lahir</th>
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                      <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50">
+                        <h3 className="text-base font-bold text-slate-800 flex items-center"><i className="fas fa-users text-indigo-600 mr-2"></i>Daftar Anggota Murid Rombel</h3>
+                      </div>
+                      <div className="overflow-x-auto p-2">
+                        <table className="w-full text-left border-collapse min-w-[500px]">
+                          <thead>
+                            <tr className="text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-100">
+                              <th className="px-4 py-3 font-bold">No</th>
+                              <th className="px-4 py-3 font-bold">Nama Lengkap Murid</th>
+                              <th className="px-4 py-3 font-bold">Tanggal Lahir</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-50">
+                            {teacherClassInfo.students.map((st, sIdx) => (
+                              <tr key={st.id} className="hover:bg-slate-50/80 transition-colors">
+                                <td className="px-4 py-3 text-slate-400 font-bold tabular-nums text-sm w-12">{sIdx + 1}</td>
+                                <td className="px-4 py-3 text-slate-800 font-semibold flex items-center space-x-3">
+                                  <div className="w-7 h-7 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs uppercase">{st.name.charAt(0)}</div>
+                                  <span className="text-sm">{st.name}</span>
+                                </td>
+                                <td className="px-4 py-3 text-slate-600 text-sm font-medium">{formatBirthDateInId(st.birthDate)}</td>
                               </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50">
-                              {teacherClassInfo.students.map((st, sIdx) => (
-                                <tr key={st.id} className="hover:bg-slate-50/80 transition-colors">
-                                  <td className="px-4 py-3 text-slate-400 font-bold tabular-nums text-sm w-12">{sIdx + 1}</td>
-                                  <td className="px-4 py-3 text-slate-800 font-semibold flex items-center space-x-3">
-                                    <div className="w-7 h-7 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs uppercase">{st.name.charAt(0)}</div>
-                                    <span className="text-sm">{st.name}</span>
-                                  </td>
-                                  <td className="px-4 py-3 text-slate-600 text-sm font-medium">{formatBirthDateInId(st.birthDate)}</td>
-                                </tr>
-                              ))}
-                              {teacherClassInfo.students.length === 0 && (
-                                <tr><td colSpan="3" className="p-10 text-center text-slate-400 font-medium italic"><i className="fas fa-folder-open text-xl mb-1.5 block opacity-40"></i>Rombel ini belum dikonfigurasi isinya oleh admin.</td></tr>
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
+                            ))}
+                            {teacherClassInfo.students.length === 0 && (
+                              <tr><td colSpan="3" className="p-10 text-center text-slate-400 font-medium italic"><i className="fas fa-folder-open text-xl mb-1.5 block opacity-40"></i>Rombel ini belum dikonfigurasi isinya oleh admin.</td></tr>
+                            )}
+                          </tbody>
+                        </table>
                       </div>
                     </div>
-                  ) : (
-                    <div className="bg-white border border-dashed border-slate-300 rounded-2xl p-12 flex flex-col items-center justify-center text-slate-400 text-center">
-                      <div className="w-16 h-16 bg-slate-50 border border-slate-200 rounded-full flex items-center justify-center mb-4 text-2xl shadow-sm"><i className="fas fa-id-card"></i></div>
-                      <h4 className="text-base font-bold text-slate-700">Informasi Rombel Kosong</h4>
-                      <p className="text-xs text-slate-400 mt-1 max-w-sm font-medium">Anda belum didaftarkan sebagai Wali Kelas di rombel manapun untuk periode Tahun Pelajaran yang aktif saat ini. Silakan hubungi operator admin sistem.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* MENU PENUGASAN PENGAMPU MAPEL GURU */}
+              {activeMenu === 'penugasan' && user.role === 'client' && (
+                <div className="space-y-6 animate-fadeIn">
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50">
+                      <h3 className="text-base font-bold text-slate-800 flex items-center"><i className="fas fa-tasks text-blue-600 mr-2"></i>Daftar Kelas & Mata Pelajaran Yang Diampu</h3>
+                      <p className="text-xs text-slate-400 font-medium mt-0.5">Daftar jam mengajar resmi Anda berdasarkan penugasan admin rombel</p>
                     </div>
-                  )}
+                    <div className="overflow-x-auto p-2">
+                      <table className="w-full text-left border-collapse min-w-[500px]">
+                        <thead>
+                          <tr className="text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-100">
+                            <th className="px-4 py-3 font-bold">Nama Kelas / Rombel</th>
+                            <th className="px-4 py-3 font-bold">Tingkatan</th>
+                            <th className="px-4 py-3 font-bold">Kode Mapel</th>
+                            <th className="px-4 py-3 font-bold">Nama Mata Pelajaran</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                          {teacherSubjectAssignments.map((asg, aIdx) => (
+                            <tr key={aIdx} className="hover:bg-slate-50/80 transition-colors">
+                              <td className="px-4 py-3 text-slate-800 font-bold">{asg.rombelName}</td>
+                              <td className="px-4 py-3 text-slate-600 font-semibold text-xs">{asg.rombelLevel}</td>
+                              <td className="px-4 py-3">
+                                <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold font-mono border border-slate-200">{asg.subjectCode}</span>
+                              </td>
+                              <td className="px-4 py-3 text-slate-700 font-medium text-sm">{asg.subjectName}</td>
+                            </tr>
+                          ))}
+                          {teacherSubjectAssignments.length === 0 && (
+                            <tr><td colSpan="4" className="p-12 text-center text-slate-400 font-medium italic"><i className="fas fa-folder-open text-2xl mb-2 block opacity-40"></i>Anda belum ditugaskan mengampu mata pelajaran apa pun pada periode aktif ini.</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -2871,14 +2930,12 @@
                     {selectedRombel && selectedRombel.academicYearId === activeAcademicPeriod?.id ? (
                       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden animate-fadeIn">
                         
-                        {/* HEADER DAN SWITCHER TAB UTAMA */}
                         <div className="p-4 sm:p-6 bg-indigo-900 text-white border-b border-indigo-950 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                           <div>
                             <h3 className="text-base font-bold flex items-center gap-2"><i className="fas fa-users-cog"></i> Pengaturan Rombel</h3>
                             <p className="text-xs text-indigo-200 mt-0.5 font-medium">Rombel Aktif: <b className="text-white font-bold">{selectedRombel.name} ({selectedRombel.level})</b></p>
                           </div>
                           
-                          {/* TAB CONTROLLER DENGAN UI SAMA DENGAN MENU UTAMA */}
                           <div className="flex bg-indigo-950/60 p-1 rounded-xl border border-indigo-800/40">
                             <button onClick={() => setActiveRombelTab('murid')} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeRombelTab === 'murid' ? 'bg-indigo-600 text-white shadow-md' : 'text-indigo-300 hover:text-white'}`}>
                               <i className="fas fa-user-graduate text-xs"></i> Murid
@@ -2889,7 +2946,6 @@
                           </div>
                         </div>
 
-                        {/* KONTEN TAB: DATA MURID ROMBEL */}
                         {activeRombelTab === 'murid' && (
                           <div className="p-4 grid grid-cols-1 md:grid-cols-12 gap-4 items-center animate-fadeIn">
                             
@@ -2946,7 +3002,6 @@
                           </div>
                         )}
 
-                        {/* KONTEN TAB: DATA MATA PELAJARAN & GURU PENGAMPU ROMBEL */}
                         {activeRombelTab === 'mapel' && (
                           <div className="p-4 grid grid-cols-1 md:grid-cols-12 gap-4 items-center animate-fadeIn">
                             
