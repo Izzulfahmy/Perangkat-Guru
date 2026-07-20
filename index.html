@@ -1015,7 +1015,7 @@
                 </div>
                 <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
                   <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Tahun Akhir</label>
-                  <input type="number" id="swal-ay-end" class="w-full bg-transparent outline-none font-bold text-slate-400 text-sm" value="${defaultStartYear + 1}" readonly>
+                  <input type="number" id="swal-ay-end" class="w-full bg-transparent outline-none font-bold text-slate-700 text-sm" value="${defaultStartYear + 1}" readonly>
                 </div>
               </div>
               <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
@@ -1101,7 +1101,7 @@
                 </div>
                 <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
                   <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Tahun Akhir</label>
-                  <input type="number" id="swal-edit-ay-end" class="w-full bg-transparent outline-none font-bold text-slate-400 text-sm" value="${endYear}" readonly>
+                  <input type="number" id="swal-edit-ay-end" class="w-full bg-transparent outline-none font-bold text-slate-700 text-sm" value="${endYear}" readonly>
                 </div>
               </div>
               <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
@@ -2330,7 +2330,7 @@
                               <th className="px-4 py-3 font-bold">Jam Pulang</th>
                               <th className="px-4 py-3 font-bold">Status</th>
                             </tr>
-                          </table>
+                          </thead>
                           <tbody className="divide-y divide-slate-50">
                             {attendanceDb.filter(a => a.userId === user.id).length > 0 ? (
                               attendanceDb.filter(a => a.userId === user.id).sort((a,b) => new Date(b.date) - new Date(a.date)).map(record => (
