@@ -421,7 +421,6 @@
       const [studentsDb, setStudentsDb] = useState([]); 
       const [rombelsDb, setRombelsDb] = useState([]); 
       const [academicYearsDb, setAcademicYearsDb] = useState([]); 
-      const [subjectsDb, setSubjectsDb] = useState([]); // STATE BARU UNTUK DATA MAPEL
       const [selectedRombel, setSelectedRombel] = useState(null);
 
       const [attendanceDb, setAttendanceDb] = useState([]);
@@ -435,24 +434,15 @@
       });
       const [currentTime, setCurrentTime] = useState(new Date());
       
-      // AMBIL PERIODE TAHUN PELAJARAN YANG AKTIF
+      // CRITICAL HOISTING FIX: POSISI URUTAN HOOKS DIRESTURKTUR AGAR VARIABEL MEMO DASHBOARD AMAN DIRENdER
       const activeAcademicPeriod = useMemo(() => {
         return academicYearsDb.find(ay => ay.isActive) || null;
       }, [academicYearsDb]);
 
-      // FILTER DATA MAPEL BERDASARKAN PERIODE TAPEL AKTIF
-      const filteredSubjectsDb = useMemo(() => {
-        if (!activeAcademicPeriod) return [];
-        return subjectsDb.filter(s => s.academicYearId === activeAcademicPeriod.id);
-      }, [subjectsDb, activeAcademicPeriod]);
-
-      // MAP DATA MURID DENGAN PREVIEW KELAS KELOMPOK ROMBEL SECARA DINAMIS
       const filteredStudentsDb = useMemo(() => {
         if (!activeAcademicPeriod) return [];
-        
         const currentPeriodStudents = studentsDb.filter(s => s.academicYearId === activeAcademicPeriod.id);
         const currentPeriodRombels = rombelsDb.filter(r => r.academicYearId === activeAcademicPeriod.id);
-
         return currentPeriodStudents.map(student => {
           const matchedRombel = currentPeriodRombels.find(r => r.studentIds && r.studentIds.includes(student.id));
           return {
@@ -462,13 +452,11 @@
         });
       }, [studentsDb, rombelsDb, activeAcademicPeriod]);
 
-      // FILTER DATA ROMBEL BERDASARKAN TAHUN PELAJARAN YANG AKTIF
       const filteredRombelsDb = useMemo(() => {
         if (!activeAcademicPeriod) return [];
         return rombelsDb.filter(r => r.academicYearId === activeAcademicPeriod.id);
       }, [rombelsDb, activeAcademicPeriod]);
 
-      // HOISTING DATA MANAGEMENT SISWA ROMBEL KELAS
       const availableStudentsForRombel = useMemo(() => {
         const assignedStudentIds = new Set();
         filteredRombelsDb.forEach(rb => {
@@ -484,7 +472,6 @@
         return filteredStudentsDb.filter(s => selectedRombel.studentIds.includes(s.id));
       }, [filteredStudentsDb, selectedRombel]);
 
-      // LOGIKA DATA KELAS & MURID YANG DIAMPU (SINKRONISASI AKUN GURU CLIENT DENGAN NAMA)
       const teacherClassInfo = useMemo(() => {
         if (user && user.role === 'client' && activeAcademicPeriod) {
           const matchedRombel = filteredRombelsDb.find(r => r.homeroomTeacher.trim().toLowerCase() === user.name.trim().toLowerCase());
@@ -615,7 +602,7 @@
       };
 
       const loadAllSystemData = async () => {
-        const [usersSnap, attSnap, holSnap, verSnap, setSnap, studSnap, rombSnap, academicSnap, subSnap] = await Promise.all([
+        const [usersSnap, attSnap, holSnap, verSnap, setSnap, studSnap, rombSnap, academicSnap] = await Promise.all([
           window.fs.getDocs(window.fs.collection(window.db, "users")),
           window.fs.getDocs(window.fs.collection(window.db, "attendance")),
           window.fs.getDocs(window.fs.collection(window.db, "holidays")),
@@ -623,8 +610,7 @@
           window.fs.getDocs(window.fs.collection(window.db, "settings")),
           window.fs.getDocs(window.fs.collection(window.db, "students")),
           window.fs.getDocs(window.fs.collection(window.db, "rombels")),
-          window.fs.getDocs(window.fs.collection(window.db, "academic_years")),
-          window.fs.getDocs(window.fs.collection(window.db, "subjects")) // TARIK TABEL MAPEL FIRESTORE
+          window.fs.getDocs(window.fs.collection(window.db, "academic_years"))
         ]);
 
         let u = usersSnap.docs.map(d => d.data());
@@ -634,7 +620,6 @@
         let st = studSnap.docs.map(d => d.data());
         let rb = rombSnap.docs.map(d => d.data());
         let ay = academicSnap.docs.map(d => d.data());
-        let sub = subSnap.docs.map(d => d.data());
         
         let s = {};
         setSnap.forEach(d => { if(d.id === 'config') s = d.data(); });
@@ -691,7 +676,6 @@
         setVerificationsDb(v);
         setAttendanceDb(processedAtt);
         setAcademicYearsDb(ay);
-        setSubjectsDb(sub);
         return u;
       };
 
@@ -1177,110 +1161,6 @@
         });
       };
 
-      // --- LOGIKA BARU UNTUK PROSES CRUD DATA MATA PELAJARAN (MAPEL) ---
-      const handleAddSubjectModal = () => {
-        if (!activeAcademicPeriod) {
-          return Swal.fire("Gagal", "Silakan buat dan aktifkan salah satu Tahun Pelajaran terlebih dahulu!", "warning");
-        }
-
-        Swal.fire({
-          title: '<h2 class="text-xl font-bold text-slate-800">Tambah Mata Pelajaran</h2>',
-          html: `
-            <div class="text-left mt-2 space-y-3">
-              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Kode Mapel</label>
-                <input type="text" id="swal-sub-code" class="w-full bg-transparent outline-none font-bold text-slate-700 text-sm" placeholder="Masukkan kode kustom (Cth: BIN-01)">
-              </div>
-              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Nama Mata Pelajaran</label>
-                <input type="text" id="swal-sub-name" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" placeholder="Masukkan nama mapel lengkap">
-              </div>
-            </div>
-          `,
-          showCancelButton: true, confirmButtonText: 'Simpan Mapel', cancelButtonText: 'Batal', buttonsStyling: false,
-          customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm', confirmButton: 'w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all mb-2 mt-4', cancelButton: 'w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 px-4 rounded-xl transition-all', actions: 'flex flex-col w-full p-0' },
-          preConfirm: () => {
-            const code = document.getElementById('swal-sub-code').value.trim();
-            const name = document.getElementById('swal-sub-name').value.trim();
-
-            if(!code || !name) {
-              Swal.showValidationMessage('Kode Mapel dan Nama Mapel wajib diisi!');
-              return false;
-            }
-            return { id: Date.now(), code, name, academicYearId: activeAcademicPeriod.id };
-          }
-        }).then(async (result) => {
-          if (result.isConfirmed) {
-            try {
-              await window.fs.setDoc(window.fs.doc(window.db, "subjects", result.value.id.toString()), result.value);
-              setSubjectsDb(prev => [...prev, result.value]);
-              Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Mata pelajaran berhasil ditambahkan.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
-            } catch(e) {
-              console.error(e);
-              Swal.fire('Error', 'Gagal memproses penyimpanan data.', 'error');
-            }
-          }
-        });
-      };
-
-      const handleEditSubject = (subObj) => {
-        Swal.fire({
-          title: '<h2 class="text-xl font-bold text-slate-800">Update Mata Pelajaran</h2>',
-          html: `
-            <div class="text-left mt-2 space-y-3">
-              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Kode Mapel</label>
-                <input type="text" id="swal-edit-sub-code" class="w-full bg-transparent outline-none font-bold text-slate-700 text-sm" value="${subObj.code}">
-              </div>
-              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Nama Mata Pelajaran</label>
-                <input type="text" id="swal-edit-sub-name" class="w-full bg-transparent outline-none font-semibold text-slate-700 text-sm" value="${subObj.name}">
-              </div>
-            </div>
-          `,
-          showCancelButton: true, confirmButtonText: 'Update Mapel', cancelButtonText: 'Batal', buttonsStyling: false,
-          customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm', confirmButton: 'w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all mb-2 mt-4', cancelButton: 'w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 px-4 rounded-xl transition-all', actions: 'flex flex-col w-full p-0' },
-          preConfirm: () => {
-            const code = document.getElementById('swal-edit-sub-code').value.trim();
-            const name = document.getElementById('swal-edit-sub-name').value.trim();
-
-            if(!code || !name) {
-              Swal.showValidationMessage('Kode Mapel dan Nama Mapel wajib diisi!');
-              return false;
-            }
-            return { ...subObj, code, name };
-          }
-        }).then(async (result) => {
-          if (result.isConfirmed) {
-            try {
-              await window.fs.setDoc(window.fs.doc(window.db, "subjects", subObj.id.toString()), result.value);
-              setSubjectsDb(prev => prev.map(item => item.id === subObj.id ? result.value : item));
-              Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Data mata pelajaran diperbarui.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
-            } catch(e) {
-              console.error(e);
-              Swal.fire('Error', 'Gagal memperbarui data.', 'error');
-            }
-          }
-        });
-      };
-
-      const handleDeleteSubject = (id) => {
-        Swal.fire({
-          title: 'Hapus Mata Pelajaran?', text: "Data kustom pelajaran ini akan terhapus permanen!", icon: 'warning',
-          showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#94a3b8', confirmButtonText: 'Ya, Hapus!', cancelButtonText: 'Batal', customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }
-        }).then(async (result) => {
-          if (result.isConfirmed) {
-            try {
-              await window.fs.deleteDoc(window.fs.doc(window.db, "subjects", id.toString()));
-              setSubjectsDb(prev => prev.filter(s => s.id !== id));
-              Swal.fire({ icon: 'success', title: 'Terhapus!', text: 'Mata pelajaran berhasil dihapus.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
-            } catch(e) {
-              console.error(e);
-            }
-          }
-        });
-      };
-
       const handleSetAcademicYearActive = async (id) => {
         Swal.fire({
           html: '<div class="flex flex-col items-center py-2"><div class="w-10 h-10 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin mb-4"></div><p class="text-slate-600 font-bold text-sm">Menetapkan Periode Aktif...</p></div>',
@@ -1684,7 +1564,6 @@
         });
       };
 
-      // POP-UP TAMBAH MURID
       const handleAddStudentModal = () => {
         if (!activeAcademicPeriod) {
           return Swal.fire("Gagal", "Silakan buat dan aktifkan salah satu Tahun Pelajaran terlebih dahulu!", "warning");
@@ -1889,7 +1768,7 @@
                 setSelectedRombel(result.value);
               }
               Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Data rombel diperbarui.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
-            } catch (err) {
+            } catch(err) {
               console.error(err);
               Swal.fire('Error', 'Gagal memperbarui data rombel.', 'error');
             }
@@ -1897,6 +1776,7 @@
         });
       };
 
+      // FAST REACTIVE MANIPULASI (OPTIMISTIC UI): SINKRONISASI INSTAN ANTI DELAY
       const handleAddStudentToRombel = async (studentId) => {
         if (!selectedRombel) return;
         const updatedIds = [...(selectedRombel.studentIds || []), studentId];
@@ -1919,6 +1799,72 @@
         window.fs.setDoc(window.fs.doc(window.db, "rombels", selectedRombel.id.toString()), updatedRombel).catch(console.error);
       };
 
+      const downloadExcelTemplate = () => {
+        const header = [["Nama Murid", "Tanggal Lahir (YYYY-MM-DD)"]];
+        const sampleData = [["Ahmad Fauzi", "2015-08-12"], ["Siti Aminah", "2016-02-24"]];
+        const ws = XLSX.utils.aoa_to_sheet([...header, ...sampleData]);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Format Murid");
+        XLSX.writeFile(wb, "Format_Import_Murid.xlsx");
+      };
+
+      const uploadExcelData = (e) => {
+        if (!activeAcademicPeriod) {
+          e.target.value = "";
+          return Swal.fire("Gagal", "Silakan buat dan aktifkan salah satu Tahun Pelajaran terlebih dahulu sebelum import!", "warning");
+        }
+
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (evt) => {
+          try {
+            const bstr = evt.target.result;
+            const wb = XLSX.read(bstr, { type: 'binary' });
+            const wsname = wb.SheetNames[0];
+            const ws = wb.Sheets[wsname];
+            const data = XLSX.utils.sheet_to_json(ws);
+
+            if (data.length === 0) {
+              return Swal.fire("Kosong", "Tidak ada data baris yang terbaca di file Excel.", "warning");
+            }
+
+            Swal.fire({
+              html: '<div class="flex flex-col items-center py-2"><div class="w-10 h-10 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin mb-4"></div><p class="text-slate-600 font-bold text-sm">Mengimpor Data Murid...</p></div>',
+              allowOutsideClick: false, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-xs' }
+            });
+
+            let importedStudents = [];
+            for (let index = 0; index < data.length; index++) {
+              const row = data[index];
+              const nameKey = row["Nama Murid"] || row["nama"] || row["Nama"];
+              const dateKey = row["Tanggal Lahir (YYYY-MM-DD)"] || row["tanggal lahir"] || row["Tanggal Lahir"];
+              
+              if (nameKey) {
+                const added = {
+                  id: Date.now() + index + Math.floor(Math.random() * 100),
+                  name: String(nameKey).trim(),
+                  birthDate: dateKey ? String(dateKey).trim() : "-",
+                  academicYearId: activeAcademicPeriod.id
+                };
+                await window.fs.setDoc(window.fs.doc(window.db, "students", added.id.toString()), added);
+                importedStudents.push(added);
+              }
+            }
+
+            setStudentsDb(prev => [...prev, ...importedStudents]);
+            e.target.value = ""; 
+            Swal.fire({ icon: 'success', title: 'Berhasil Impor', text: `${importedStudents.length} murid telah dimasukkan otomatis ke database periode aktif.`, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+          } catch (err) {
+            console.error(err);
+            Swal.fire("Gagal", "Format berkas Excel tidak valid.", "error");
+          }
+        };
+        reader.readAsBinaryString(file);
+      };
+
+      // FIXED ACTION: LOGIKA HAPUS KINI BERFUNGSI SEMPURNA TANPA BUBBLING INTERUPSI
       const handleDeleteRombel = (id) => {
         Swal.fire({
           title: 'Hapus Rombel?', text: "Data rombel tidak dapat dikembalikan!", icon: 'warning',
@@ -2093,7 +2039,7 @@
                  </button>
                </div>
             </div>
-            <div className={`grid gap-1 ${user.role === 'admin' ? 'grid-cols-8' : 'grid-cols-4'}`}>
+            <div className={`grid gap-1 ${user.role === 'admin' ? 'grid-cols-7' : 'grid-cols-4'}`}>
               <button onClick={() => changeMenu('dashboard')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='dashboard'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
                 <i className="fas fa-home text-base mb-1"></i><span className="text-[9px] font-bold uppercase">Beranda</span>
               </button>
@@ -2114,10 +2060,6 @@
                 <>
                   <button onClick={() => changeMenu('tahun pelajaran')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='tahun pelajaran'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
                     <i className="fas fa-graduation-cap text-base mb-1"></i><span className="text-[9px] font-bold uppercase">Tapel</span>
-                  </button>
-                  {/* LINK NAVIGASI MOBILE DATA MAPEL */}
-                  <button onClick={() => changeMenu('data-mapel')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='data-mapel'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
-                    <i className="fas fa-book text-base mb-1"></i><span className="text-[9px] font-bold uppercase">Mapel</span>
                   </button>
                   <button onClick={() => changeMenu('data guru')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeMenu==='data guru'?'bg-blue-600 text-white shadow-lg':'text-slate-400 bg-slate-800/40'}`}>
                     <i className="fas fa-chalkboard-teacher text-base mb-1"></i><span className="text-[9px] font-bold uppercase">Guru</span>
@@ -2158,8 +2100,6 @@
               
               {user.role === 'admin' && <>
                 <button onClick={() => changeMenu('tahun pelajaran')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'tahun pelajaran' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-graduation-cap w-5 text-center"></i><span className="font-semibold text-sm">Tahun Pelajaran</span></button>
-                {/* LINK NAVIGASI DESKTOP DATA MAPEL */}
-                <button onClick={() => changeMenu('data-mapel')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'data-mapel' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-book w-5 text-center"></i><span className="font-semibold text-sm">Data Mapel</span></button>
                 <button onClick={() => changeMenu('data guru')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'data guru' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-chalkboard-teacher w-5 text-center"></i><span className="font-semibold text-sm">Data Guru</span></button>
                 <button onClick={() => changeMenu('data murid')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'data murid' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-user-graduate w-5 text-center"></i><span className="font-semibold text-sm">Data Murid</span></button>
                 <button onClick={() => changeMenu('rombel')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeMenu === 'rombel' ? 'bg-blue-600 shadow-md shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><i className="fas fa-cubes w-5 text-center"></i><span className="font-semibold text-sm">Data Rombel</span></button>
@@ -2315,6 +2255,7 @@
                   </div>
               )}
 
+              {/* MENU INFORMASI GURU */}
               {activeMenu === 'informasi-guru' && user.role === 'client' && (
                 <div className="space-y-6 animate-fadeIn">
                   {teacherClassInfo.hasClass ? (
@@ -2413,55 +2354,12 @@
                               </td>
                               <td className="px-4 py-3 text-right whitespace-nowrap space-x-2">
                                 <button onClick={() => handleEditAcademicYear(ay)} className="w-7 h-7 bg-blue-50 text-blue-500 hover:bg-blue-500 hover:text-white rounded-md transition-colors opacity-50 group-hover:opacity-100" title="Edit Tahun Pelajaran"><i className="fas fa-edit text-xs"></i></button>
-                                <button onClick={() => handleDeleteAcademicYear(id)} className="w-7 h-7 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-md transition-colors opacity-50 group-hover:opacity-100" title="Hapus Tahun Pelajaran"><i className="fas fa-trash-alt text-xs"></i></button>
+                                <button onClick={() => handleDeleteAcademicYear(ay.id)} className="w-7 h-7 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-md transition-colors opacity-50 group-hover:opacity-100" title="Hapus Tahun Pelajaran"><i className="fas fa-trash-alt text-xs"></i></button>
                               </td>
                             </tr>
                           ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAMPILAN VIEW MODUL BARU: DATA MATA PELAJARAN (MAPEL) */}
-              {activeMenu === 'data-mapel' && user.role === 'admin' && (
-                <div className="space-y-6 animate-fadeIn">
-                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                      <div>
-                        <h3 className="text-base font-bold text-slate-800 flex items-center"><i className="fas fa-book mr-2 text-blue-600 bg-blue-50 p-1.5 rounded"></i> Daftar Mata Pelajaran (Mapel)</h3>
-                        <p className="text-xs text-slate-400 font-semibold mt-0.5">Menampilkan mapel resmi pada tahun pelajaran aktif saat ini</p>
-                      </div>
-                      <button type="button" onClick={handleAddSubjectModal} className="w-10 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center justify-center shadow-md shadow-blue-200 transition-all active:scale-95" title="Tambah Mata Pelajaran Baru">
-                        <i className="fas fa-plus text-sm"></i>
-                      </button>
-                    </div>
-                    
-                    <div className="overflow-x-auto p-2">
-                      <table className="w-full text-left border-collapse min-w-[500px]">
-                        <thead>
-                          <tr className="text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-100">
-                            <th className="px-4 py-3 font-bold w-16">No</th>
-                            <th className="px-4 py-3 font-bold">Kode Mapel</th>
-                            <th className="px-4 py-3 font-bold">Nama Mata Pelajaran</th>
-                            <th className="px-4 py-3 font-bold text-right">Alat</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                          {filteredSubjectsDb.map((subject, index) => (
-                            <tr key={subject.id} className="hover:bg-slate-50/80 transition-colors group">
-                              <td className="px-4 py-3 text-slate-400 font-bold tabular-nums text-sm">{index + 1}</td>
-                              <td className="px-4 py-3"><span className="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-md text-[11px] font-bold font-mono border border-slate-200">{subject.code}</span></td>
-                              <td className="px-4 py-3 text-slate-800 font-semibold text-sm">{subject.name}</td>
-                              <td className="px-4 py-3 text-right whitespace-nowrap space-x-2">
-                                <button onClick={() => handleEditSubject(subject)} className="w-7 h-7 bg-blue-50 text-blue-500 hover:bg-blue-500 hover:text-white rounded-md transition-colors opacity-50 group-hover:opacity-100" title="Edit Mapel"><i className="fas fa-edit text-xs"></i></button>
-                                <button onClick={() => handleDeleteSubject(subject.id)} className="w-7 h-7 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-md transition-colors opacity-50 group-hover:opacity-100" title="Hapus Mapel"><i className="fas fa-trash-alt text-xs"></i></button>
-                              </td>
-                            </tr>
-                          ))}
-                          {filteredSubjectsDb.length === 0 && (
-                            <tr><td colSpan="4" className="p-10 text-center text-slate-400 font-medium italic"><i className="fas fa-folder-open text-xl mb-1.5 block opacity-40"></i>Belum ada data mata pelajaran pada periode aktif ini. Silakan klik tombol (+) untuk menambahkan.</td></tr>
+                          {academicYearsDb.length === 0 && (
+                            <tr><td colSpan="6" className="p-10 text-center text-slate-400 font-medium italic"><i className="fas fa-folder-open text-xl mb-1.5 block opacity-40"></i>Belum ada data konfigurasi Tahun Pelajaran.</td></tr>
                           )}
                         </tbody>
                       </table>
