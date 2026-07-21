@@ -113,9 +113,15 @@
       const [subjectsDb, setSubjectsDb] = useState([]);
       const [academicYearsDb, setAcademicYearsDb] = useState([]);
       const [settingsDb, setSettingsDb] = useState({});
+      
+      const [babsDb, setBabsDb] = useState([]);
+      const [materisDb, setMaterisDb] = useState([]);
 
       const [selectedRombel, setSelectedRombel] = useState(null);
       const [selectedSubject, setSelectedSubject] = useState(null);
+      const [selectedBab, setSelectedBab] = useState(null);
+      const [selectedMateri, setSelectedMateri] = useState(null);
+
       const [activeTab, setActiveTab] = useState(0);
 
       const activeAcademicPeriod = useMemo(() => {
@@ -161,21 +167,39 @@
         return list;
       }, [selectedRombel, user, subjectsDb, activeAcademicPeriod]);
 
+      const filteredBabs = useMemo(() => {
+        if (!selectedRombel || !selectedSubject || !activeAcademicPeriod) return [];
+        return babsDb.filter(b => 
+          b.rombelId === selectedRombel.id && 
+          b.subjectId === selectedSubject.id &&
+          b.academicYearId === activeAcademicPeriod.id
+        ).sort((a,b) => (a.createdAt || 0) - (b.createdAt || 0));
+      }, [babsDb, selectedRombel, selectedSubject, activeAcademicPeriod]);
+
+      const filteredMateris = useMemo(() => {
+        if (!selectedBab) return [];
+        return materisDb.filter(m => m.babId === selectedBab.id).sort((a,b) => (a.createdAt || 0) - (b.createdAt || 0));
+      }, [materisDb, selectedBab]);
+
       useEffect(() => {
         const loadSystemData = async () => {
           try {
             await window.fs.signInAnonymously(window.auth);
             
-            const [rombSnap, subjSnap, academicSnap, setSnap] = await Promise.all([
+            const [rombSnap, subjSnap, academicSnap, setSnap, babsSnap, materisSnap] = await Promise.all([
               window.fs.getDocs(window.fs.collection(window.db, "rombels")),
               window.fs.getDocs(window.fs.collection(window.db, "subjects")),
               window.fs.getDocs(window.fs.collection(window.db, "academic_years")),
-              window.fs.getDocs(window.fs.collection(window.db, "settings"))
+              window.fs.getDocs(window.fs.collection(window.db, "settings")),
+              window.fs.getDocs(window.fs.collection(window.db, "modul_babs")),
+              window.fs.getDocs(window.fs.collection(window.db, "modul_materis"))
             ]);
 
             setRombelsDb(rombSnap.docs.map(d => d.data()));
             setSubjectsDb(subjSnap.docs.map(d => d.data()));
             setAcademicYearsDb(academicSnap.docs.map(d => d.data()));
+            setBabsDb(babsSnap.docs.map(d => d.data()));
+            setMaterisDb(materisSnap.docs.map(d => d.data()));
 
             let s = {};
             setSnap.forEach(d => { if(d.id === 'config') s = d.data(); });
@@ -200,6 +224,168 @@
         };
         checkFirebase();
       }, []);
+
+      // POPUP TAMBAH / EDIT BAB
+      const handleAddOrEditBab = (existingBab = null) => {
+        const isEdit = !!existingBab;
+        Swal.fire({
+          title: `<h2 class="text-xl font-bold text-slate-800">${isEdit ? 'Edit BAB' : 'Tambah BAB Baru'}</h2>`,
+          html: `
+            <div class="text-left mt-2 space-y-3">
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Judul / Nama BAB</label>
+                <input type="text" id="swal-bab-title" class="w-full bg-transparent outline-none font-bold text-slate-700 text-sm" placeholder="Cth: BAB 1 - Aljabar dan Pengukuran" value="${isEdit ? existingBab.title : ''}">
+              </div>
+            </div>
+          `,
+          showCancelButton: true, confirmButtonText: isEdit ? 'Simpan Perubahan' : 'Tambah BAB', cancelButtonText: 'Batal', buttonsStyling: false,
+          customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm', confirmButton: 'w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all mb-2 mt-4', cancelButton: 'w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 px-4 rounded-xl transition-all', actions: 'flex flex-col w-full p-0' },
+          preConfirm: () => {
+            const title = document.getElementById('swal-bab-title').value.trim();
+            if (!title) {
+              Swal.showValidationMessage('Nama BAB wajib diisi!');
+              return false;
+            }
+            return { title };
+          }
+        }).then(async (result) => {
+          if (result.isConfirmed) {
+            try {
+              if (isEdit) {
+                const updated = { ...existingBab, title: result.value.title };
+                await window.fs.setDoc(window.fs.doc(window.db, "modul_babs", existingBab.id.toString()), updated);
+                setBabsDb(prev => prev.map(b => b.id === existingBab.id ? updated : b));
+              } else {
+                const newBab = {
+                  id: Date.now(),
+                  title: result.value.title,
+                  rombelId: selectedRombel.id,
+                  subjectId: selectedSubject.id,
+                  academicYearId: activeAcademicPeriod.id,
+                  createdAt: Date.now()
+                };
+                await window.fs.setDoc(window.fs.doc(window.db, "modul_babs", newBab.id.toString()), newBab);
+                setBabsDb(prev => [...prev, newBab]);
+              }
+              Swal.fire({ icon: 'success', title: 'Berhasil', text: `BAB telah ${isEdit ? 'diperbarui' : 'ditambahkan'}.`, timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+            } catch(e) {
+              console.error(e);
+              Swal.fire('Gagal', 'Gagal menyimpan data BAB.', 'error');
+            }
+          }
+        });
+      };
+
+      const handleDeleteBab = (babId, e) => {
+        e.stopPropagation();
+        Swal.fire({
+          title: 'Hapus BAB ini?',
+          text: 'Semua materi di dalam BAB ini juga akan terhapus!',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#ef4444',
+          cancelButtonColor: '#94a3b8',
+          confirmButtonText: 'Ya, Hapus!',
+          cancelButtonText: 'Batal',
+          customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }
+        }).then(async (res) => {
+          if (res.isConfirmed) {
+            try {
+              await window.fs.deleteDoc(window.fs.doc(window.db, "modul_babs", babId.toString()));
+              
+              // Hapus materi terkait
+              const relatedMateris = materisDb.filter(m => m.babId === babId);
+              for (const m of relatedMateris) {
+                await window.fs.deleteDoc(window.fs.doc(window.db, "modul_materis", m.id.toString()));
+              }
+
+              setBabsDb(prev => prev.filter(b => b.id !== babId));
+              setMaterisDb(prev => prev.filter(m => m.babId !== babId));
+              if (selectedBab && selectedBab.id === babId) setSelectedBab(null);
+              Swal.fire({ icon: 'success', title: 'Terhapus', text: 'BAB dan materi terkait berhasil dihapus.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+            } catch (err) {
+              console.error(err);
+              Swal.fire('Gagal', 'Terjadi kesalahan saat menghapus.', 'error');
+            }
+          }
+        });
+      };
+
+      // POPUP TAMBAH / EDIT MATERI
+      const handleAddOrEditMateri = (existingMateri = null) => {
+        const isEdit = !!existingMateri;
+        Swal.fire({
+          title: `<h2 class="text-xl font-bold text-slate-800">${isEdit ? 'Edit Materi' : 'Tambah Materi Baru'}</h2>`,
+          html: `
+            <div class="text-left mt-2 space-y-3">
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Nama Materi Utama</label>
+                <input type="text" id="swal-materi-title" class="w-full bg-transparent outline-none font-bold text-slate-700 text-sm" placeholder="Cth: Persamaan Linier Satu Variabel" value="${isEdit ? existingMateri.title : ''}">
+              </div>
+            </div>
+          `,
+          showCancelButton: true, confirmButtonText: isEdit ? 'Simpan Perubahan' : 'Tambah Materi', cancelButtonText: 'Batal', buttonsStyling: false,
+          customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm', confirmButton: 'w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-xl transition-all mb-2 mt-4', cancelButton: 'w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 px-4 rounded-xl transition-all', actions: 'flex flex-col w-full p-0' },
+          preConfirm: () => {
+            const title = document.getElementById('swal-materi-title').value.trim();
+            if (!title) {
+              Swal.showValidationMessage('Nama Materi wajib diisi!');
+              return false;
+            }
+            return { title };
+          }
+        }).then(async (result) => {
+          if (result.isConfirmed) {
+            try {
+              if (isEdit) {
+                const updated = { ...existingMateri, title: result.value.title };
+                await window.fs.setDoc(window.fs.doc(window.db, "modul_materis", existingMateri.id.toString()), updated);
+                setMaterisDb(prev => prev.map(m => m.id === existingMateri.id ? updated : m));
+              } else {
+                const newMateri = {
+                  id: Date.now(),
+                  title: result.value.title,
+                  babId: selectedBab.id,
+                  createdAt: Date.now()
+                };
+                await window.fs.setDoc(window.fs.doc(window.db, "modul_materis", newMateri.id.toString()), newMateri);
+                setMaterisDb(prev => [...prev, newMateri]);
+              }
+              Swal.fire({ icon: 'success', title: 'Berhasil', text: `Materi telah ${isEdit ? 'diperbarui' : 'ditambahkan'}.`, timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+            } catch(e) {
+              console.error(e);
+              Swal.fire('Gagal', 'Gagal menyimpan data materi.', 'error');
+            }
+          }
+        });
+      };
+
+      const handleDeleteMateri = (materiId, e) => {
+        e.stopPropagation();
+        Swal.fire({
+          title: 'Hapus Materi ini?',
+          text: 'Data modul ajar pada materi ini juga akan terhapus!',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#ef4444',
+          cancelButtonColor: '#94a3b8',
+          confirmButtonText: 'Ya, Hapus!',
+          cancelButtonText: 'Batal',
+          customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }
+        }).then(async (res) => {
+          if (res.isConfirmed) {
+            try {
+              await window.fs.deleteDoc(window.fs.doc(window.db, "modul_materis", materiId.toString()));
+              setMaterisDb(prev => prev.filter(m => m.id !== materiId));
+              if (selectedMateri && selectedMateri.id === materiId) setSelectedMateri(null);
+              Swal.fire({ icon: 'success', title: 'Terhapus', text: 'Materi berhasil dihapus.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
+            } catch (err) {
+              console.error(err);
+              Swal.fire('Gagal', 'Terjadi kesalahan saat menghapus.', 'error');
+            }
+          }
+        });
+      };
 
       if (!user) {
         return (
@@ -253,18 +439,18 @@
           <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 space-y-6">
             
             {/* BREADCRUMB NAVIGATION */}
-            <div className="flex items-center space-x-2 text-xs font-semibold text-slate-500 bg-white p-3 rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
+            <div className="flex items-center space-x-2 text-xs font-semibold text-slate-500 bg-white p-3 rounded-2xl border border-slate-200 shadow-sm overflow-x-auto no-scrollbar">
               <a href="index.html" className="hover:text-blue-600 transition-colors flex items-center gap-1.5 shrink-0">
                 <i className="fas fa-home"></i> Beranda
               </a>
               <i className="fas fa-chevron-right text-[10px] text-slate-300 shrink-0"></i>
-              <button onClick={() => { setSelectedRombel(null); setSelectedSubject(null); }} className={`hover:text-blue-600 transition-colors shrink-0 ${!selectedRombel ? 'text-blue-600 font-bold' : ''}`}>
+              <button onClick={() => { setSelectedRombel(null); setSelectedSubject(null); setSelectedBab(null); setSelectedMateri(null); }} className={`hover:text-blue-600 transition-colors shrink-0 ${!selectedRombel ? 'text-blue-600 font-bold' : ''}`}>
                 Pilih Kelas
               </button>
               {selectedRombel && (
                 <>
                   <i className="fas fa-chevron-right text-[10px] text-slate-300 shrink-0"></i>
-                  <button onClick={() => setSelectedSubject(null)} className={`hover:text-blue-600 transition-colors shrink-0 ${selectedRombel && !selectedSubject ? 'text-blue-600 font-bold' : ''}`}>
+                  <button onClick={() => { setSelectedSubject(null); setSelectedBab(null); setSelectedMateri(null); }} className={`hover:text-blue-600 transition-colors shrink-0 ${selectedRombel && !selectedSubject ? 'text-blue-600 font-bold' : ''}`}>
                     {selectedRombel.name}
                   </button>
                 </>
@@ -272,7 +458,23 @@
               {selectedSubject && (
                 <>
                   <i className="fas fa-chevron-right text-[10px] text-slate-300 shrink-0"></i>
-                  <span className="text-blue-600 font-bold truncate">{selectedSubject.name}</span>
+                  <button onClick={() => { setSelectedBab(null); setSelectedMateri(null); }} className={`hover:text-blue-600 transition-colors shrink-0 ${selectedSubject && !selectedBab ? 'text-blue-600 font-bold' : ''}`}>
+                    {selectedSubject.name}
+                  </button>
+                </>
+              )}
+              {selectedBab && (
+                <>
+                  <i className="fas fa-chevron-right text-[10px] text-slate-300 shrink-0"></i>
+                  <button onClick={() => setSelectedMateri(null)} className={`hover:text-blue-600 transition-colors shrink-0 ${selectedBab && !selectedMateri ? 'text-blue-600 font-bold' : ''}`}>
+                    {selectedBab.title}
+                  </button>
+                </>
+              )}
+              {selectedMateri && (
+                <>
+                  <i className="fas fa-chevron-right text-[10px] text-slate-300 shrink-0"></i>
+                  <span className="text-blue-600 font-bold truncate">{selectedMateri.title}</span>
                 </>
               )}
             </div>
@@ -357,8 +559,8 @@
                       </div>
 
                       <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-purple-600 relative z-10">
-                        <span>Kelola Modul Ajar</span>
-                        <i className="fas fa-pen-to-square transform group-hover:translate-x-1 transition-transform"></i>
+                        <span>Pilih Mapel</span>
+                        <i className="fas fa-arrow-right transform group-hover:translate-x-1 transition-transform"></i>
                       </div>
                     </div>
                   ))}
@@ -373,29 +575,209 @@
               </div>
             )}
 
-            {/* STEP 3: INTERFACE EDITOR MODUL AJAR (10 TAB NAVIGATION) */}
-            {selectedRombel && selectedSubject && (
-              <div className="space-y-6 animate-fadeIn">
-                
-                {/* HEADER MAPEL AKTIF */}
-                <div className="bg-gradient-to-r from-slate-900 to-blue-950 text-white p-6 rounded-2xl shadow-md border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            {/* STEP 3: DAFTAR BAB (LIST KE BAWAH DENGAN TOMBOL +) */}
+            {selectedRombel && selectedSubject && !selectedBab && (
+              <div className="space-y-4 animate-fadeIn">
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="bg-blue-600 text-white font-mono text-[10px] font-bold px-2 py-0.5 rounded">
                         {selectedSubject.code}
                       </span>
-                      <span className="text-xs text-blue-200 font-semibold uppercase tracking-wider">{selectedRombel.name}</span>
+                      <span className="text-xs text-blue-600 font-bold uppercase tracking-wider">{selectedRombel.name}</span>
                     </div>
-                    <h2 className="text-2xl font-black tracking-tight mt-1">{selectedSubject.name}</h2>
+                    <h2 className="text-2xl font-black text-slate-800 tracking-tight mt-1">{selectedSubject.name}</h2>
+                    <p className="text-xs text-slate-400 font-medium mt-0.5">Daftar BAB / Unit Pembelajaran</p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => handleAddOrEditBab()}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-all shadow-md shadow-blue-100 flex items-center gap-2"
+                    >
+                      <i className="fas fa-plus"></i> Tambah BAB Baru
+                    </button>
+                    <button 
+                      onClick={() => setSelectedSubject(null)}
+                      className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold px-3 py-2.5 rounded-xl text-xs transition-colors"
+                      title="Ganti Mapel"
+                    >
+                      <i className="fas fa-arrow-left"></i>
+                    </button>
+                  </div>
+                </div>
+
+                {/* LIST BAB KE BAWAH */}
+                <div className="space-y-3">
+                  {filteredBabs.map((bab, idx) => {
+                    const materiCount = materisDb.filter(m => m.babId === bab.id).length;
+                    return (
+                      <div 
+                        key={bab.id}
+                        onClick={() => setSelectedBab(bab)}
+                        className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm hover:border-blue-500 hover:shadow-md transition-all cursor-pointer group flex items-center justify-between gap-4"
+                      >
+                        <div className="flex items-center space-x-4 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 font-bold flex items-center justify-center shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                            {idx + 1}
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="text-base font-bold text-slate-800 group-hover:text-blue-600 transition-colors truncate">{bab.title}</h3>
+                            <p className="text-xs text-slate-400 font-medium flex items-center gap-2 mt-0.5">
+                              <span><i className="fas fa-list-check mr-1"></i> {materiCount} Materi Pelajaran</span>
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-2 shrink-0">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleAddOrEditBab(bab); }}
+                            className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-blue-50 text-slate-500 hover:text-blue-600 flex items-center justify-center transition-colors"
+                            title="Edit BAB"
+                          >
+                            <i className="fas fa-pen text-xs"></i>
+                          </button>
+                          <button 
+                            onClick={(e) => handleDeleteBab(bab.id, e)}
+                            className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 flex items-center justify-center transition-colors"
+                            title="Hapus BAB"
+                          >
+                            <i className="fas fa-trash-can text-xs"></i>
+                          </button>
+                          <div className="w-8 h-8 rounded-lg bg-slate-50 group-hover:bg-blue-100 text-slate-400 group-hover:text-blue-600 flex items-center justify-center transition-colors">
+                            <i className="fas fa-chevron-right text-xs transform group-hover:translate-x-0.5 transition-transform"></i>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {filteredBabs.length === 0 && (
+                    <div className="bg-white p-12 rounded-2xl border border-dashed border-slate-300 text-center text-slate-400 space-y-3">
+                      <i className="fas fa-folder-plus text-4xl block opacity-40"></i>
+                      <p className="text-sm font-semibold">Belum ada BAB yang dibuat untuk mata pelajaran ini.</p>
+                      <button 
+                        onClick={() => handleAddOrEditBab()}
+                        className="inline-block bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold px-4 py-2 rounded-xl text-xs transition-colors"
+                      >
+                        + Tambah BAB Pertama
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* STEP 4: DAFTAR MATERI (SETELAH BAB DIPILIH) */}
+            {selectedRombel && selectedSubject && selectedBab && !selectedMateri && (
+              <div className="space-y-4 animate-fadeIn">
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <span className="text-[10px] font-black bg-blue-50 text-blue-600 px-3 py-1 rounded-full uppercase tracking-wider border border-blue-100">
+                      {selectedSubject.name} &bull; {selectedRombel.name}
+                    </span>
+                    <h2 className="text-2xl font-black text-slate-800 tracking-tight mt-1">{selectedBab.title}</h2>
+                    <p className="text-xs text-slate-400 font-medium mt-0.5">Pilih atau Tambah Materi Pelajaran Spesifik</p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => handleAddOrEditMateri()}
+                      className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-all shadow-md shadow-purple-100 flex items-center gap-2"
+                    >
+                      <i className="fas fa-plus"></i> Tambah Materi Baru
+                    </button>
+                    <button 
+                      onClick={() => setSelectedBab(null)}
+                      className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold px-3 py-2.5 rounded-xl text-xs transition-colors"
+                      title="Kembali ke Daftar BAB"
+                    >
+                      <i className="fas fa-arrow-left"></i>
+                    </button>
+                  </div>
+                </div>
+
+                {/* LIST MATERI KE BAWAH */}
+                <div className="space-y-3">
+                  {filteredMateris.map((materi, idx) => (
+                    <div 
+                      key={materi.id}
+                      onClick={() => setSelectedMateri(materi)}
+                      className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm hover:border-purple-500 hover:shadow-md transition-all cursor-pointer group flex items-center justify-between gap-4"
+                    >
+                      <div className="flex items-center space-x-4 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 font-bold flex items-center justify-center shrink-0 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                          <i className="fas fa-file-pen text-sm"></i>
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="text-base font-bold text-slate-800 group-hover:text-purple-600 transition-colors truncate">{materi.title}</h3>
+                          <p className="text-[11px] text-slate-400 font-medium mt-0.5">Klik untuk mengedit 10 komponen Modul Ajar</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-2 shrink-0">
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleAddOrEditMateri(materi); }}
+                          className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-purple-50 text-slate-500 hover:text-purple-600 flex items-center justify-center transition-colors"
+                          title="Edit Nama Materi"
+                        >
+                          <i className="fas fa-pen text-xs"></i>
+                        </button>
+                        <button 
+                          onClick={(e) => handleDeleteMateri(materi.id, e)}
+                          className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 flex items-center justify-center transition-colors"
+                          title="Hapus Materi"
+                        >
+                          <i className="fas fa-trash-can text-xs"></i>
+                        </button>
+                        <div className="w-8 h-8 rounded-lg bg-slate-50 group-hover:bg-purple-100 text-slate-400 group-hover:text-purple-600 flex items-center justify-center transition-colors">
+                          <i className="fas fa-chevron-right text-xs transform group-hover:translate-x-0.5 transition-transform"></i>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {filteredMateris.length === 0 && (
+                    <div className="bg-white p-12 rounded-2xl border border-dashed border-slate-300 text-center text-slate-400 space-y-3">
+                      <i className="fas fa-file-circle-plus text-4xl block opacity-40"></i>
+                      <p className="text-sm font-semibold">Belum ada Materi Pelajaran di dalam BAB ini.</p>
+                      <button 
+                        onClick={() => handleAddOrEditMateri()}
+                        className="inline-block bg-purple-50 hover:bg-purple-100 text-purple-600 font-bold px-4 py-2 rounded-xl text-xs transition-colors"
+                      >
+                        + Tambah Materi Pertama
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* STEP 5: INTERFACE EDITOR MODUL AJAR (10 TAB NAVIGATION) */}
+            {selectedRombel && selectedSubject && selectedBab && selectedMateri && (
+              <div className="space-y-6 animate-fadeIn">
+                
+                {/* HEADER MATERI & MODUL AKTIF */}
+                <div className="bg-gradient-to-r from-slate-900 to-blue-950 text-white p-6 rounded-2xl shadow-md border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="bg-blue-600 text-white font-mono text-[10px] font-bold px-2 py-0.5 rounded">
+                        {selectedSubject.code}
+                      </span>
+                      <span className="text-xs text-blue-200 font-semibold uppercase tracking-wider">{selectedRombel.name}</span>
+                      <span className="text-xs text-slate-400">&bull;</span>
+                      <span className="text-xs text-slate-300 font-medium">{selectedBab.title}</span>
+                    </div>
+                    <h2 className="text-2xl font-black tracking-tight mt-1">{selectedMateri.title}</h2>
                     <p className="text-xs text-slate-400 font-medium mt-1">Pengampu: <b className="text-white">{user.name}</b></p>
                   </div>
 
                   <div className="flex items-center gap-2">
                     <button 
-                      onClick={() => setSelectedSubject(null)}
+                      onClick={() => setSelectedMateri(null)}
                       className="bg-white/10 hover:bg-white/20 text-white font-bold px-4 py-2.5 rounded-xl text-xs backdrop-blur-md transition-all"
                     >
-                      <i className="fas fa-list mr-1.5"></i> Ganti Mapel
+                      <i className="fas fa-list mr-1.5"></i> Ganti Materi
                     </button>
                   </div>
                 </div>
@@ -443,7 +825,7 @@
                       </div>
                       <h4 className="text-base font-bold text-slate-700">Form {TAB_LIST[activeTab].title}</h4>
                       <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto font-medium">
-                        Area input data untuk bagian <b>{TAB_LIST[activeTab].title}</b> akan dikembangkan pada tahap selanjutnya.
+                        Area input data untuk materi <b>{selectedMateri.title}</b> pada bagian <b>{TAB_LIST[activeTab].title}</b> akan dikembangkan pada tahap selanjutnya.
                       </p>
                     </div>
                   </div>
