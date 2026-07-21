@@ -507,29 +507,40 @@
       }, [user, filteredRombelsDb, filteredStudentsDb, activeAcademicPeriod]);
 
       // Mengambil daftar tugas mata pelajaran khusus untuk guru yang login saat ini
-      const teacherSubjectAssignments = useMemo(() => {
+      const teacherClassAssignments = useMemo(() => {
         if (!user || user.role !== 'client' || !activeAcademicPeriod) return [];
-        let list = [];
+        const userName = user.name.trim().toLowerCase();
+        
+        let classMap = {};
+
         filteredRombelsDb.forEach(rb => {
+          let assignedSubjects = [];
+
           if (rb.subjectAssignments) {
             Object.keys(rb.subjectAssignments).forEach(subjId => {
-              if (rb.subjectAssignments[subjId].trim().toLowerCase() === user.name.trim().toLowerCase()) {
+              if (rb.subjectAssignments[subjId].trim().toLowerCase() === userName) {
                 const mapelObj = filteredSubjectsDb.find(s => s.id.toString() === subjId);
                 if (mapelObj) {
-                  list.push({
-                    rombelName: rb.name,
-                    rombelLevel: rb.level,
-                    subjectCode: mapelObj.code,
-                    subjectName: mapelObj.name
-                  });
+                  assignedSubjects.push(mapelObj);
                 }
               }
             });
           }
+
+          if (assignedSubjects.length > 0) {
+            classMap[rb.id] = {
+              rombelId: rb.id,
+              rombelName: rb.name,
+              rombelLevel: rb.level,
+              homeroomTeacher: rb.homeroomTeacher,
+              subjects: assignedSubjects
+            };
+          }
         });
-        return list;
+
+        return Object.values(classMap);
       }, [user, filteredRombelsDb, filteredSubjectsDb, activeAcademicPeriod]);
-      
+
       const ensureAllClientsHaveRecord = async (targetDateStr, currentUserId) => {
         const clients = usersDb.filter(u => u.role === 'client');
         let createdPlaceholders = [];
@@ -2512,37 +2523,70 @@
               {/* MENU PENUGASAN PENGAMPU MAPEL GURU */}
               {activeMenu === 'penugasan' && user.role === 'client' && (
                 <div className="space-y-6 animate-fadeIn">
-                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50">
-                      <h3 className="text-base font-bold text-slate-800 flex items-center"><i className="fas fa-tasks text-blue-600 mr-2"></i>Daftar Kelas & Mata Pelajaran Yang Diampu</h3>
-                      <p className="text-xs text-slate-400 font-medium mt-0.5">Daftar jam mengajar resmi Anda berdasarkan penugasan admin rombel</p>
+                  <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="text-base font-bold text-slate-800 flex items-center">
+                          <i className="fas fa-tasks text-blue-600 mr-2"></i>Daftar Penugasan Kelas & Pengampuan
+                        </h3>
+                        <p className="text-xs text-slate-400 font-medium mt-0.5">Daftar kelas dan mata pelajaran resmi yang Anda ampu</p>
+                      </div>
+                      {teacherClassAssignments.length > 0 && (
+                        <span className="text-xs font-bold text-slate-400 hidden sm:flex items-center gap-1">
+                          <i className="fas fa-arrows-left-right text-slate-300"></i> Geser horizontal
+                        </span>
+                      )}
                     </div>
-                    <div className="overflow-x-auto p-2">
-                      <table className="w-full text-left border-collapse min-w-[500px]">
-                        <thead>
-                          <tr className="text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-100">
-                            <th className="px-4 py-3 font-bold">Nama Kelas / Rombel</th>
-                            <th className="px-4 py-3 font-bold">Tingkatan</th>
-                            <th className="px-4 py-3 font-bold">Kode Mapel</th>
-                            <th className="px-4 py-3 font-bold">Nama Mata Pelajaran</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                          {teacherSubjectAssignments.map((asg, aIdx) => (
-                            <tr key={aIdx} className="hover:bg-slate-50/80 transition-colors">
-                              <td className="px-4 py-3 text-slate-800 font-bold">{asg.rombelName}</td>
-                              <td className="px-4 py-3 text-slate-600 font-semibold text-xs">{asg.rombelLevel}</td>
-                              <td className="px-4 py-3">
-                                <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold font-mono border border-slate-200">{asg.subjectCode}</span>
-                              </td>
-                              <td className="px-4 py-3 text-slate-700 font-medium text-sm">{asg.subjectName}</td>
-                            </tr>
-                          ))}
-                          {teacherSubjectAssignments.length === 0 && (
-                            <tr><td colSpan="4" className="p-12 text-center text-slate-400 font-medium italic"><i className="fas fa-folder-open text-2xl mb-2 block opacity-40"></i>Anda belum ditugaskan mengampu mata pelajaran apa pun pada periode aktif ini.</td></tr>
-                          )}
-                        </tbody>
-                      </table>
+
+                    {/* HORIZONTAL SCROLL CONTAINER */}
+                    <div className="flex space-x-4 overflow-x-auto pb-4 pt-1 no-scrollbar sm:scroll-auto">
+                      {teacherClassAssignments.map((cls) => (
+                        <div 
+                          key={cls.rombelId}
+                          className="w-80 sm:w-96 shrink-0 bg-white rounded-2xl border border-slate-200 shadow-sm hover:border-blue-500 hover:shadow-md transition-all flex flex-col justify-between overflow-hidden relative group"
+                        >
+                          <div className="p-5 border-b border-slate-100 bg-slate-50/50">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-[10px] font-black bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-blue-200">
+                                {cls.rombelLevel}
+                              </span>
+                              <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                                <i className="fas fa-book"></i> {cls.subjects.length} Mapel
+                              </span>
+                            </div>
+                            <h4 className="text-xl font-bold text-slate-800">{cls.rombelName}</h4>
+                            <p className="text-xs text-slate-500 font-medium mt-1 flex items-center gap-1">
+                              <i className="fas fa-user-shield text-slate-400"></i> Wali Kelas: <b className="text-slate-700">{cls.homeroomTeacher}</b>
+                            </p>
+                          </div>
+
+                          <div className="p-5 flex-1 space-y-2">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Mata Pelajaran Diampu:</p>
+                            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                              {cls.subjects.map((sb) => (
+                                <div key={sb.id} className="flex items-center justify-between bg-slate-50 border border-slate-100 p-2.5 rounded-xl">
+                                  <span className="text-xs font-bold text-slate-700 truncate pr-2">{sb.name}</span>
+                                  <span className="bg-white text-slate-600 px-2 py-0.5 rounded font-mono text-[10px] font-bold border border-slate-200 shrink-0">
+                                    {sb.code}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-blue-600">
+                            <span>Status Penugasan Aktif</span>
+                            <i className="fas fa-circle-check text-emerald-500 text-sm"></i>
+                          </div>
+                        </div>
+                      ))}
+
+                      {teacherClassAssignments.length === 0 && (
+                        <div className="w-full bg-slate-50 p-12 rounded-2xl border border-dashed border-slate-300 text-center text-slate-400 space-y-2">
+                          <i className="fas fa-folder-open text-3xl block opacity-40"></i>
+                          <p className="text-xs font-semibold">Anda belum ditugaskan mengampu mata pelajaran apa pun di periode aktif saat ini.</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
