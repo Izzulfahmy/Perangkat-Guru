@@ -39,6 +39,11 @@
       transition: opacity 0.6s ease-out, transform 0.6s ease-out !important;
       pointer-events: none !important;
     }
+
+    /* Formatting CSS untuk Editor Teks */
+    .editor-content ol { list-style-position: inside; margin-left: 0.5rem; }
+    .editor-content ul { list-style-type: disc; list-style-position: inside; margin-left: 0.5rem; }
+    .editor-content p { margin-bottom: 0.25rem; }
   </style>
 
   <script type="module">
@@ -100,6 +105,111 @@
       { id: 'refleksi-diri', title: 'Refleksi Diri', icon: 'fa-user-pen' }
     ];
 
+    // KOMPONEN EDITOR TEKS (WYSIWYG TOOLBAR SIMPEL ALA WORD)
+    const RichTextEditor = ({ value, onChange, placeholder = 'Tuliskan teks di sini...', minHeight = '110px' }) => {
+      const editorRef = useRef(null);
+
+      useEffect(() => {
+        if (editorRef.current && editorRef.current.innerHTML !== (value || '')) {
+          editorRef.current.innerHTML = value || '';
+        }
+      }, [value]);
+
+      const executeCmd = (command, val = null) => {
+        document.execCommand(command, false, val);
+        if (editorRef.current) {
+          onChange(editorRef.current.innerHTML);
+        }
+      };
+
+      const handleListOption = (type) => {
+        if (!type) return;
+        if (type === 'bullet') {
+          executeCmd('insertUnorderedList');
+        } else {
+          executeCmd('insertOrderedList');
+          // Terapkan list-style-type pada elemen list terdekat
+          const selection = window.getSelection();
+          if (selection.rangeCount > 0) {
+            let node = selection.getRangeAt(0).startContainer;
+            while (node && node !== editorRef.current && node.tagName !== 'OL') {
+              node = node.parentNode;
+            }
+            if (node && node.tagName === 'OL') {
+              node.style.listStyleType = type;
+            }
+          }
+        }
+        if (editorRef.current) {
+          onChange(editorRef.current.innerHTML);
+        }
+      };
+
+      return (
+        <div className="border border-slate-200 rounded-xl overflow-hidden bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all shadow-sm">
+          {/* TOOLBAR EDITOR */}
+          <div className="bg-slate-100/90 border-b border-slate-200 p-1.5 flex flex-wrap items-center gap-1 text-slate-700 select-none">
+            {/* Gaya Teks */}
+            <button type="button" onClick={() => executeCmd('bold')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center font-bold text-xs" title="Tebal (Bold)">
+              <i className="fas fa-bold"></i>
+            </button>
+            <button type="button" onClick={() => executeCmd('italic')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center text-xs" title="Miring (Italic)">
+              <i className="fas fa-italic"></i>
+            </button>
+            <button type="button" onClick={() => executeCmd('underline')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center text-xs" title="Garis Bawah (Underline)">
+              <i className="fas fa-underline"></i>
+            </button>
+
+            <div className="h-4 w-px bg-slate-300 mx-1"></div>
+
+            {/* Pengaturan Ratataan */}
+            <button type="button" onClick={() => executeCmd('justifyLeft')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center text-xs" title="Rata Kiri">
+              <i className="fas fa-align-left"></i>
+            </button>
+            <button type="button" onClick={() => executeCmd('justifyCenter')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center text-xs" title="Rata Tengah">
+              <i className="fas fa-align-center"></i>
+            </button>
+            <button type="button" onClick={() => executeCmd('justifyRight')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center text-xs" title="Rata Kanan">
+              <i className="fas fa-align-right"></i>
+            </button>
+            <button type="button" onClick={() => executeCmd('justifyFull')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center text-xs" title="Rata Kiri-Kanan (Justify)">
+              <i className="fas fa-align-justify"></i>
+            </button>
+
+            <div className="h-4 w-px bg-slate-300 mx-1"></div>
+
+            {/* Format Penomoran / List Dropdown */}
+            <div className="flex items-center gap-1">
+              <i className="fas fa-list-ol text-xs text-slate-500 pl-1"></i>
+              <select 
+                onChange={(e) => { handleListOption(e.target.value); e.target.value = ""; }}
+                className="bg-white border border-slate-200 rounded px-2 py-1 text-[11px] font-bold text-slate-700 outline-none hover:border-slate-300 cursor-pointer shadow-2xs"
+                defaultValue=""
+              >
+                <option value="" disabled>-- Format Penomoran --</option>
+                <option value="decimal">1, 2, 3 (Angka Biasa)</option>
+                <option value="upper-roman">I, II, III (Romawi Besar)</option>
+                <option value="lower-roman">i, ii, iii (Romawi Kecil)</option>
+                <option value="upper-alpha">A, B, C (Huruf Kapital)</option>
+                <option value="lower-alpha">a, b, c (Huruf Kecil)</option>
+                <option value="bullet">• Bullet (Simbol Titik)</option>
+              </select>
+            </div>
+          </div>
+
+          {/* AREA INPUT EDITABLE */}
+          <div
+            ref={editorRef}
+            contentEditable
+            onInput={() => editorRef.current && onChange(editorRef.current.innerHTML)}
+            className="editor-content p-3 text-sm font-medium text-slate-800 outline-none leading-relaxed overflow-y-auto"
+            style={{ minHeight, maxHeight: '300px' }}
+            placeholder={placeholder}
+          />
+        </div>
+      );
+    };
+
     function App() {
       const [isLoading, setIsLoading] = useState(true);
       const [user, setUser] = useState(() => {
@@ -124,7 +234,7 @@
 
       const [activeTab, setActiveTab] = useState(0);
 
-      // State Tunggal untuk seluruh data Modul Ajar
+      // State Utama untuk seluruh data Modul Ajar
       const [modulData, setModulData] = useState({
         infoUmum: {
           judul: 'RENCANA PEMBELAJARAN MENDALAM (RPM)',
@@ -1117,7 +1227,7 @@
                       </div>
                     )}
 
-                    {/* TAB 2: IDENTIFIKASI MURID */}
+                    {/* TAB 2: IDENTIFIKASI MURID (DENGAN RICH TEXT EDITOR) */}
                     {activeTab === 1 && (
                       <div className="space-y-4 max-w-4xl mx-auto py-2 animate-fadeIn">
                         
@@ -1126,12 +1236,11 @@
                           <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500">
                             Pengetahuan Awal Siswa
                           </label>
-                          <textarea 
-                            rows="3"
-                            value={modulData.identifikasiMurid?.pengetahuanAwal || ''} 
-                            onChange={(e) => updateIdentifikasi('pengetahuanAwal', e.target.value)}
-                            className="w-full bg-white border border-slate-200 rounded-xl p-3 font-semibold text-slate-800 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all shadow-sm leading-relaxed"
+                          <RichTextEditor 
+                            value={modulData.identifikasiMurid?.pengetahuanAwal || ''}
+                            onChange={(val) => updateIdentifikasi('pengetahuanAwal', val)}
                             placeholder="Deskripsikan pengetahuan atau pemahaman dasar yang sudah dimiliki murid sebelum mempelajari materi ini..."
+                            minHeight="100px"
                           />
                         </div>
 
@@ -1140,12 +1249,11 @@
                           <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500">
                             Minat & Kecenderungan Belajar
                           </label>
-                          <textarea 
-                            rows="3"
-                            value={modulData.identifikasiMurid?.minat || ''} 
-                            onChange={(e) => updateIdentifikasi('minat', e.target.value)}
-                            className="w-full bg-white border border-slate-200 rounded-xl p-3 font-semibold text-slate-800 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all shadow-sm leading-relaxed"
-                            placeholder="Jelaskan hal-hal yang memotivasi siswa (misal: praktik langsung, bermain teka-teki, menggambar, diskusi kelompok)..."
+                          <RichTextEditor 
+                            value={modulData.identifikasiMurid?.minat || ''}
+                            onChange={(val) => updateIdentifikasi('minat', val)}
+                            placeholder="Jelaskan hal-hal yang memotivasi siswa (misal: praktik langsung, menggambar, diskusi kelompok)..."
+                            minHeight="100px"
                           />
                         </div>
 
@@ -1154,19 +1262,18 @@
                           <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500">
                             Kebutuhan Belajar & Pendampingan
                           </label>
-                          <textarea 
-                            rows="3"
-                            value={modulData.identifikasiMurid?.kebutuhanBelajar || ''} 
-                            onChange={(e) => updateIdentifikasi('kebutuhanBelajar', e.target.value)}
-                            className="w-full bg-white border border-slate-200 rounded-xl p-3 font-semibold text-slate-800 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all shadow-sm leading-relaxed"
-                            placeholder="Sebutkan alat peraga konkret, panduan langkah demi langkah, atau tingkat bimbingan khusus yang diperlukan siswa..."
+                          <RichTextEditor 
+                            value={modulData.identifikasiMurid?.kebutuhanBelajar || ''}
+                            onChange={(val) => updateIdentifikasi('kebutuhanBelajar', val)}
+                            placeholder="Sebutkan alat peraga konkret, panduan langkah demi langkah, atau tingkat bimbingan khusus..."
+                            minHeight="100px"
                           />
                         </div>
 
                       </div>
                     )}
 
-                    {/* TAB 3: MATERI PELAJARAN */}
+                    {/* TAB 3: MATERI PELAJARAN (DENGAN RICH TEXT EDITOR) */}
                     {activeTab === 2 && (
                       <div className="space-y-4 max-w-4xl mx-auto py-2 animate-fadeIn">
                         
@@ -1175,12 +1282,11 @@
                           <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500">
                             Deskripsi Ringkas / Pengantar Materi
                           </label>
-                          <textarea 
-                            rows="2"
-                            value={modulData.materiPelajaran?.deskripsi || ''} 
-                            onChange={(e) => updateMateriPelajaran('deskripsi', e.target.value)}
-                            className="w-full bg-white border border-slate-200 rounded-xl p-3 font-semibold text-slate-800 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all shadow-sm leading-relaxed"
+                          <RichTextEditor 
+                            value={modulData.materiPelajaran?.deskripsi || ''}
+                            onChange={(val) => updateMateriPelajaran('deskripsi', val)}
                             placeholder="Cth: Berikut materi pelajaran tentang konsep sisi pada bangun datar..."
+                            minHeight="90px"
                           />
                         </div>
 
@@ -1199,24 +1305,25 @@
                             </button>
                           </div>
 
-                          <div className="space-y-2.5">
+                          <div className="space-y-3">
                             {(modulData.materiPelajaran?.poinMateri || ['']).map((poin, pIdx) => (
-                              <div key={pIdx} className="flex items-center space-x-2">
-                                <span className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0">
+                              <div key={pIdx} className="flex items-start space-x-2">
+                                <span className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0 mt-1">
                                   {pIdx + 1}
                                 </span>
-                                <input 
-                                  type="text"
-                                  value={poin}
-                                  onChange={(e) => handlePoinMateriChange(pIdx, e.target.value)}
-                                  className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2 font-semibold text-slate-800 text-sm focus:outline-none focus:border-blue-500 transition-all shadow-sm"
-                                  placeholder={`Masukkan rincian poin materi ke-${pIdx + 1}...`}
-                                />
+                                <div className="flex-1">
+                                  <RichTextEditor 
+                                    value={poin}
+                                    onChange={(val) => handlePoinMateriChange(pIdx, val)}
+                                    placeholder={`Masukkan rincian poin materi ke-${pIdx + 1}...`}
+                                    minHeight="70px"
+                                  />
+                                </div>
                                 {(modulData.materiPelajaran?.poinMateri || []).length > 1 && (
                                   <button 
                                     type="button"
                                     onClick={() => removePoinMateri(pIdx)}
-                                    className="w-9 h-9 bg-red-50 hover:bg-red-500 text-red-500 hover:text-white rounded-xl flex items-center justify-center transition-colors shrink-0"
+                                    className="w-8 h-8 bg-red-50 hover:bg-red-500 text-red-500 hover:text-white rounded-xl flex items-center justify-center transition-colors shrink-0 mt-1"
                                     title="Hapus Poin Ini"
                                   >
                                     <i className="fas fa-trash-can text-xs"></i>
