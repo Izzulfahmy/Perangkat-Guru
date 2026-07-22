@@ -124,7 +124,7 @@
 
       const [activeTab, setActiveTab] = useState(0);
 
-      // State Tunggal untuk seluruh data Modul Ajar (10 Tab)
+      // State Tunggal untuk seluruh data Modul Ajar
       const [modulData, setModulData] = useState({
         infoUmum: {
           judul: 'RENCANA PEMBELAJARAN MENDALAM (RPM)',
@@ -136,6 +136,15 @@
           fase: 'Fase A',
           babTopik: '',
           alokasiWaktu: '2 JP (2 x 35 menit)'
+        },
+        identifikasiMurid: {
+          pengetahuanAwal: '',
+          minat: '',
+          kebutuhanBelajar: ''
+        },
+        materiPelajaran: {
+          deskripsi: '',
+          poinMateri: ['']
         }
       });
 
@@ -265,9 +274,24 @@
               alokasiWaktu: existingModul?.infoUmum?.alokasiWaktu || '2 JP (2 x 35 menit)'
             };
 
+            const loadedIdentifikasi = {
+              pengetahuanAwal: existingModul?.identifikasiMurid?.pengetahuanAwal || '',
+              minat: existingModul?.identifikasiMurid?.minat || '',
+              kebutuhanBelajar: existingModul?.identifikasiMurid?.kebutuhanBelajar || ''
+            };
+
+            const loadedMateriPelajaran = {
+              deskripsi: existingModul?.materiPelajaran?.deskripsi || '',
+              poinMateri: existingModul?.materiPelajaran?.poinMateri && existingModul.materiPelajaran.poinMateri.length > 0
+                ? existingModul.materiPelajaran.poinMateri
+                : ['']
+            };
+
             setModulData({
               ...existingModul,
-              infoUmum: loadedInfoUmum
+              infoUmum: loadedInfoUmum,
+              identifikasiMurid: loadedIdentifikasi,
+              materiPelajaran: loadedMateriPelajaran
             });
 
             setSaveStatus('Tersimpan');
@@ -309,15 +333,44 @@
         return () => clearTimeout(timer);
       }, [modulData]);
 
-      // HELPER UPDATE FIELD KHUSUS INFO UMUM
+      // HELPER UPDATER PER SECTION
       const updateInfoUmum = (field, value) => {
         setModulData(prev => ({
           ...prev,
-          infoUmum: {
-            ...prev.infoUmum,
-            [field]: value
-          }
+          infoUmum: { ...prev.infoUmum, [field]: value }
         }));
+      };
+
+      const updateIdentifikasi = (field, value) => {
+        setModulData(prev => ({
+          ...prev,
+          identifikasiMurid: { ...prev.identifikasiMurid, [field]: value }
+        }));
+      };
+
+      const updateMateriPelajaran = (field, value) => {
+        setModulData(prev => ({
+          ...prev,
+          materiPelajaran: { ...prev.materiPelajaran, [field]: value }
+        }));
+      };
+
+      const handlePoinMateriChange = (index, value) => {
+        const updatedPoin = [...(modulData.materiPelajaran?.poinMateri || [''])];
+        updatedPoin[index] = value;
+        updateMateriPelajaran('poinMateri', updatedPoin);
+      };
+
+      const addPoinMateri = () => {
+        const updatedPoin = [...(modulData.materiPelajaran?.poinMateri || ['']), ''];
+        updateMateriPelajaran('poinMateri', updatedPoin);
+      };
+
+      const removePoinMateri = (index) => {
+        const currentPoin = modulData.materiPelajaran?.poinMateri || [''];
+        if (currentPoin.length <= 1) return;
+        const updatedPoin = currentPoin.filter((_, i) => i !== index);
+        updateMateriPelajaran('poinMateri', updatedPoin);
       };
 
       // POPUP TAMBAH / EDIT BAB
@@ -1064,8 +1117,121 @@
                       </div>
                     )}
 
-                    {/* DYNAMIC TAB BODY UNTUK TAB 2 SAMPAI 10 (PLACEHOLDER DULU) */}
-                    {activeTab !== 0 && (
+                    {/* TAB 2: IDENTIFIKASI MURID */}
+                    {activeTab === 1 && (
+                      <div className="space-y-4 max-w-4xl mx-auto py-2 animate-fadeIn">
+                        
+                        {/* 1. Pengetahuan Awal */}
+                        <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-1.5 hover:bg-white hover:border-blue-300 transition-all">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                            Pengetahuan Awal Siswa
+                          </label>
+                          <textarea 
+                            rows="3"
+                            value={modulData.identifikasiMurid?.pengetahuanAwal || ''} 
+                            onChange={(e) => updateIdentifikasi('pengetahuanAwal', e.target.value)}
+                            className="w-full bg-white border border-slate-200 rounded-xl p-3 font-semibold text-slate-800 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all shadow-sm leading-relaxed"
+                            placeholder="Deskripsikan pengetahuan atau pemahaman dasar yang sudah dimiliki murid sebelum mempelajari materi ini..."
+                          />
+                        </div>
+
+                        {/* 2. Minat Siswa */}
+                        <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-1.5 hover:bg-white hover:border-blue-300 transition-all">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                            Minat & Kecenderungan Belajar
+                          </label>
+                          <textarea 
+                            rows="3"
+                            value={modulData.identifikasiMurid?.minat || ''} 
+                            onChange={(e) => updateIdentifikasi('minat', e.target.value)}
+                            className="w-full bg-white border border-slate-200 rounded-xl p-3 font-semibold text-slate-800 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all shadow-sm leading-relaxed"
+                            placeholder="Jelaskan hal-hal yang memotivasi siswa (misal: praktik langsung, bermain teka-teki, menggambar, diskusi kelompok)..."
+                          />
+                        </div>
+
+                        {/* 3. Kebutuhan Belajar */}
+                        <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-1.5 hover:bg-white hover:border-blue-300 transition-all">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                            Kebutuhan Belajar & Pendampingan
+                          </label>
+                          <textarea 
+                            rows="3"
+                            value={modulData.identifikasiMurid?.kebutuhanBelajar || ''} 
+                            onChange={(e) => updateIdentifikasi('kebutuhanBelajar', e.target.value)}
+                            className="w-full bg-white border border-slate-200 rounded-xl p-3 font-semibold text-slate-800 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all shadow-sm leading-relaxed"
+                            placeholder="Sebutkan alat peraga konkret, panduan langkah demi langkah, atau tingkat bimbingan khusus yang diperlukan siswa..."
+                          />
+                        </div>
+
+                      </div>
+                    )}
+
+                    {/* TAB 3: MATERI PELAJARAN */}
+                    {activeTab === 2 && (
+                      <div className="space-y-4 max-w-4xl mx-auto py-2 animate-fadeIn">
+                        
+                        {/* 1. Pengantar / Deskripsi Ringkas Materi */}
+                        <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-1.5 hover:bg-white hover:border-blue-300 transition-all">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                            Deskripsi Ringkas / Pengantar Materi
+                          </label>
+                          <textarea 
+                            rows="2"
+                            value={modulData.materiPelajaran?.deskripsi || ''} 
+                            onChange={(e) => updateMateriPelajaran('deskripsi', e.target.value)}
+                            className="w-full bg-white border border-slate-200 rounded-xl p-3 font-semibold text-slate-800 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all shadow-sm leading-relaxed"
+                            placeholder="Cth: Berikut materi pelajaran tentang konsep sisi pada bangun datar..."
+                          />
+                        </div>
+
+                        {/* 2. Poin-poin Pokok Materi */}
+                        <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-3 hover:bg-white hover:border-blue-300 transition-all">
+                          <div className="flex items-center justify-between">
+                            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                              Poin-Poin Rincian Materi Utama
+                            </label>
+                            <button 
+                              type="button" 
+                              onClick={addPoinMateri}
+                              className="text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg border border-blue-200 transition-colors flex items-center gap-1.5"
+                            >
+                              <i className="fas fa-plus text-[10px]"></i> Tambah Poin
+                            </button>
+                          </div>
+
+                          <div className="space-y-2.5">
+                            {(modulData.materiPelajaran?.poinMateri || ['']).map((poin, pIdx) => (
+                              <div key={pIdx} className="flex items-center space-x-2">
+                                <span className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0">
+                                  {pIdx + 1}
+                                </span>
+                                <input 
+                                  type="text"
+                                  value={poin}
+                                  onChange={(e) => handlePoinMateriChange(pIdx, e.target.value)}
+                                  className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2 font-semibold text-slate-800 text-sm focus:outline-none focus:border-blue-500 transition-all shadow-sm"
+                                  placeholder={`Masukkan rincian poin materi ke-${pIdx + 1}...`}
+                                />
+                                {(modulData.materiPelajaran?.poinMateri || []).length > 1 && (
+                                  <button 
+                                    type="button"
+                                    onClick={() => removePoinMateri(pIdx)}
+                                    className="w-9 h-9 bg-red-50 hover:bg-red-500 text-red-500 hover:text-white rounded-xl flex items-center justify-center transition-colors shrink-0"
+                                    title="Hapus Poin Ini"
+                                  >
+                                    <i className="fas fa-trash-can text-xs"></i>
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                      </div>
+                    )}
+
+                    {/* DYNAMIC TAB BODY UNTUK TAB 4 SAMPAI 10 (PLACEHOLDER DULU) */}
+                    {activeTab > 2 && (
                       <div className="p-8 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50 my-6">
                         <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto text-2xl mb-4">
                           <i className={`fas ${TAB_LIST[activeTab].icon}`}></i>
