@@ -40,7 +40,12 @@
       pointer-events: none !important;
     }
 
-    /* Formatting CSS Rapi untuk Editor Teks & Hanging Indent Presisi */
+    /* CSS Memaksa Seluruh Teks & Numbering di Editor Menggunakan Times New Roman */
+    .editor-content,
+    .editor-content * {
+      font-family: 'Times New Roman', Times, serif !important;
+    }
+
     .editor-content ol { 
       list-style-position: outside; 
       padding-left: 1.5rem; 
@@ -48,6 +53,7 @@
       margin-top: 0.25rem;
       margin-bottom: 0.25rem;
     }
+
     .editor-content ul { 
       list-style-type: disc; 
       list-style-position: outside; 
@@ -56,10 +62,12 @@
       margin-top: 0.25rem;
       margin-bottom: 0.25rem;
     }
+
     .editor-content li { 
       padding-left: 0.25rem; 
       margin-bottom: 0.25rem;
     }
+
     .editor-content p { 
       margin-bottom: 0.25rem; 
     }
@@ -124,7 +132,7 @@
       { id: 'refleksi-diri', title: 'Refleksi Diri', icon: 'fa-user-pen' }
     ];
 
-    // KOMPONEN EDITOR TEKS (DENGAN ICON NUMBERING LENGKAP: 1, I, A, a, BULLET)
+    // KOMPONEN EDITOR TEKS (SEMUA TEXT & NUMBERING MENGGUNAKAN TIMES NEW ROMAN)
     const RichTextEditor = ({ value, onChange, placeholder = 'Tuliskan teks di sini...', minHeight = '110px' }) => {
       const editorRef = useRef(null);
 
@@ -146,7 +154,6 @@
           executeCmd('insertUnorderedList');
         } else {
           executeCmd('insertOrderedList');
-          // Atur tipe penomoran langsung pada tag OL induk
           const selection = window.getSelection();
           if (selection.rangeCount > 0) {
             let node = selection.getRangeAt(0).startContainer;
@@ -207,16 +214,16 @@
             <div className="h-4 w-px bg-slate-300 mx-1"></div>
 
             {/* TOMBOL-TOMBOL ICON NUMBERING LENGKAP */}
-            <button type="button" onClick={() => handleCustomList('decimal')} className="px-2 h-7 rounded hover:bg-slate-200 font-bold text-xs font-mono" title="Penomoran Angka (1, 2, 3)">
+            <button type="button" onClick={() => handleCustomList('decimal')} className="px-2 h-7 rounded hover:bg-slate-200 font-bold text-xs" style={{ fontFamily: "'Times New Roman', serif" }} title="Penomoran Angka (1, 2, 3)">
               1.
             </button>
-            <button type="button" onClick={() => handleCustomList('upper-roman')} className="px-2 h-7 rounded hover:bg-slate-200 font-bold text-xs font-mono" title="Romawi Kapital (I, II, III)">
+            <button type="button" onClick={() => handleCustomList('upper-roman')} className="px-2 h-7 rounded hover:bg-slate-200 font-bold text-xs" style={{ fontFamily: "'Times New Roman', serif" }} title="Romawi Kapital (I, II, III)">
               I.
             </button>
-            <button type="button" onClick={() => handleCustomList('upper-alpha')} className="px-2 h-7 rounded hover:bg-slate-200 font-bold text-xs font-mono" title="Huruf Kapital (A, B, C)">
+            <button type="button" onClick={() => handleCustomList('upper-alpha')} className="px-2 h-7 rounded hover:bg-slate-200 font-bold text-xs" style={{ fontFamily: "'Times New Roman', serif" }} title="Huruf Kapital (A, B, C)">
               A.
             </button>
-            <button type="button" onClick={() => handleCustomList('lower-alpha')} className="px-2 h-7 rounded hover:bg-slate-200 font-bold text-xs font-mono" title="Huruf Kecil (a, b, c)">
+            <button type="button" onClick={() => handleCustomList('lower-alpha')} className="px-2 h-7 rounded hover:bg-slate-200 font-bold text-xs" style={{ fontFamily: "'Times New Roman', serif" }} title="Huruf Kecil (a, b, c)">
               a.
             </button>
             <button type="button" onClick={() => handleCustomList('bullet')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center text-xs" title="Bullets (Simbol Titik)">
@@ -229,7 +236,7 @@
             ref={editorRef}
             contentEditable
             onInput={() => editorRef.current && onChange(editorRef.current.innerHTML)}
-            className="editor-content p-3 text-sm font-medium text-slate-800 outline-none leading-relaxed overflow-y-auto"
+            className="editor-content p-3 text-base text-slate-900 outline-none leading-relaxed overflow-y-auto"
             style={{ minHeight, maxHeight: '350px' }}
             placeholder={placeholder}
           />
@@ -1223,7 +1230,7 @@
                       </div>
                     )}
 
-                    {/* TAB 2: IDENTIFIKASI MURID (DENGAN RICH TEXT EDITOR) */}
+                    {/* TAB 2: IDENTIFIKASI MURID (DENGAN RICH TEXT EDITOR & TIMES NEW ROMAN) */}
                     {activeTab === 1 && (
                       <div className="space-y-4 max-w-4xl mx-auto py-2 animate-fadeIn">
                         
@@ -1269,7 +1276,7 @@
                       </div>
                     )}
 
-                    {/* TAB 3: MATERI PELAJARAN (1 SINGLE TEXTBOX TANPA JUDUL ATAS) */}
+                    {/* TAB 3: MATERI PELAJARAN (SINGLE TEXTBOX TIMES NEW ROMAN) */}
                     {activeTab === 2 && (
                       <div className="space-y-4 max-w-4xl mx-auto py-2 animate-fadeIn">
                         <RichTextEditor 
