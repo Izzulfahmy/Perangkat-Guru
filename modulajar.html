@@ -105,7 +105,7 @@
       { id: 'refleksi-diri', title: 'Refleksi Diri', icon: 'fa-user-pen' }
     ];
 
-    // KOMPONEN EDITOR TEKS (WYSIWYG TOOLBAR SIMPEL ALA WORD)
+    // KOMPONEN EDITOR TEKS (WYSIWYG TOOLBAR RINGKAS)
     const RichTextEditor = ({ value, onChange, placeholder = 'Tuliskan teks di sini...', minHeight = '110px' }) => {
       const editorRef = useRef(null);
 
@@ -128,7 +128,6 @@
           executeCmd('insertUnorderedList');
         } else {
           executeCmd('insertOrderedList');
-          // Terapkan list-style-type pada elemen list terdekat
           const selection = window.getSelection();
           if (selection.rangeCount > 0) {
             let node = selection.getRangeAt(0).startContainer;
@@ -150,13 +149,13 @@
           {/* TOOLBAR EDITOR */}
           <div className="bg-slate-100/90 border-b border-slate-200 p-1.5 flex flex-wrap items-center gap-1 text-slate-700 select-none">
             {/* Gaya Teks */}
-            <button type="button" onClick={() => executeCmd('bold')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center font-bold text-xs" title="Tebal (Bold)">
+            <button type="button" onClick={() => executeCmd('bold')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center font-bold text-xs" title="Bold">
               <i className="fas fa-bold"></i>
             </button>
-            <button type="button" onClick={() => executeCmd('italic')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center text-xs" title="Miring (Italic)">
+            <button type="button" onClick={() => executeCmd('italic')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center text-xs" title="Italic">
               <i className="fas fa-italic"></i>
             </button>
-            <button type="button" onClick={() => executeCmd('underline')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center text-xs" title="Garis Bawah (Underline)">
+            <button type="button" onClick={() => executeCmd('underline')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center text-xs" title="Underline">
               <i className="fas fa-underline"></i>
             </button>
 
@@ -172,29 +171,27 @@
             <button type="button" onClick={() => executeCmd('justifyRight')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center text-xs" title="Rata Kanan">
               <i className="fas fa-align-right"></i>
             </button>
-            <button type="button" onClick={() => executeCmd('justifyFull')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center text-xs" title="Rata Kiri-Kanan (Justify)">
+            <button type="button" onClick={() => executeCmd('justifyFull')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center text-xs" title="Rata Kiri-Kanan">
               <i className="fas fa-align-justify"></i>
             </button>
 
             <div className="h-4 w-px bg-slate-300 mx-1"></div>
 
-            {/* Format Penomoran / List Dropdown */}
-            <div className="flex items-center gap-1">
-              <i className="fas fa-list-ol text-xs text-slate-500 pl-1"></i>
-              <select 
-                onChange={(e) => { handleListOption(e.target.value); e.target.value = ""; }}
-                className="bg-white border border-slate-200 rounded px-2 py-1 text-[11px] font-bold text-slate-700 outline-none hover:border-slate-300 cursor-pointer shadow-2xs"
-                defaultValue=""
-              >
-                <option value="" disabled>-- Format Penomoran --</option>
-                <option value="decimal">1, 2, 3 (Angka Biasa)</option>
-                <option value="upper-roman">I, II, III (Romawi Besar)</option>
-                <option value="lower-roman">i, ii, iii (Romawi Kecil)</option>
-                <option value="upper-alpha">A, B, C (Huruf Kapital)</option>
-                <option value="lower-alpha">a, b, c (Huruf Kecil)</option>
-                <option value="bullet">• Bullet (Simbol Titik)</option>
-              </select>
-            </div>
+            {/* Format Penomoran / List Dropdown Simbol Saja */}
+            <select 
+              onChange={(e) => { handleListOption(e.target.value); e.target.value = ""; }}
+              className="bg-white border border-slate-200 rounded px-1.5 py-1 text-xs font-bold text-slate-700 outline-none hover:border-slate-300 cursor-pointer shadow-2xs"
+              defaultValue=""
+              title="Format Penomoran & List"
+            >
+              <option value="" disabled>🔢</option>
+              <option value="decimal">1, 2, 3</option>
+              <option value="upper-roman">I, II, III</option>
+              <option value="lower-roman">i, ii, iii</option>
+              <option value="upper-alpha">A, B, C</option>
+              <option value="lower-alpha">a, b, c</option>
+              <option value="bullet">• Bullet</option>
+            </select>
           </div>
 
           {/* AREA INPUT EDITABLE */}
@@ -203,7 +200,7 @@
             contentEditable
             onInput={() => editorRef.current && onChange(editorRef.current.innerHTML)}
             className="editor-content p-3 text-sm font-medium text-slate-800 outline-none leading-relaxed overflow-y-auto"
-            style={{ minHeight, maxHeight: '300px' }}
+            style={{ minHeight, maxHeight: '350px' }}
             placeholder={placeholder}
           />
         </div>
@@ -252,10 +249,7 @@
           minat: '',
           kebutuhanBelajar: ''
         },
-        materiPelajaran: {
-          deskripsi: '',
-          poinMateri: ['']
-        }
+        materiPelajaran: ''
       });
 
       const [saveStatus, setSaveStatus] = useState('Tersimpan');
@@ -390,12 +384,9 @@
               kebutuhanBelajar: existingModul?.identifikasiMurid?.kebutuhanBelajar || ''
             };
 
-            const loadedMateriPelajaran = {
-              deskripsi: existingModul?.materiPelajaran?.deskripsi || '',
-              poinMateri: existingModul?.materiPelajaran?.poinMateri && existingModul.materiPelajaran.poinMateri.length > 0
-                ? existingModul.materiPelajaran.poinMateri
-                : ['']
-            };
+            const loadedMateriPelajaran = typeof existingModul?.materiPelajaran === 'string'
+              ? existingModul.materiPelajaran
+              : (existingModul?.materiPelajaran?.deskripsi || '');
 
             setModulData({
               ...existingModul,
@@ -456,31 +447,6 @@
           ...prev,
           identifikasiMurid: { ...prev.identifikasiMurid, [field]: value }
         }));
-      };
-
-      const updateMateriPelajaran = (field, value) => {
-        setModulData(prev => ({
-          ...prev,
-          materiPelajaran: { ...prev.materiPelajaran, [field]: value }
-        }));
-      };
-
-      const handlePoinMateriChange = (index, value) => {
-        const updatedPoin = [...(modulData.materiPelajaran?.poinMateri || [''])];
-        updatedPoin[index] = value;
-        updateMateriPelajaran('poinMateri', updatedPoin);
-      };
-
-      const addPoinMateri = () => {
-        const updatedPoin = [...(modulData.materiPelajaran?.poinMateri || ['']), ''];
-        updateMateriPelajaran('poinMateri', updatedPoin);
-      };
-
-      const removePoinMateri = (index) => {
-        const currentPoin = modulData.materiPelajaran?.poinMateri || [''];
-        if (currentPoin.length <= 1) return;
-        const updatedPoin = currentPoin.filter((_, i) => i !== index);
-        updateMateriPelajaran('poinMateri', updatedPoin);
       };
 
       // POPUP TAMBAH / EDIT BAB
@@ -1273,67 +1239,15 @@
                       </div>
                     )}
 
-                    {/* TAB 3: MATERI PELAJARAN (DENGAN RICH TEXT EDITOR) */}
+                    {/* TAB 3: MATERI PELAJARAN (1 SINGLE TEXTBOX TANPA JUDUL ATAS) */}
                     {activeTab === 2 && (
                       <div className="space-y-4 max-w-4xl mx-auto py-2 animate-fadeIn">
-                        
-                        {/* 1. Pengantar / Deskripsi Ringkas Materi */}
-                        <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-1.5 hover:bg-white hover:border-blue-300 transition-all">
-                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                            Deskripsi Ringkas / Pengantar Materi
-                          </label>
-                          <RichTextEditor 
-                            value={modulData.materiPelajaran?.deskripsi || ''}
-                            onChange={(val) => updateMateriPelajaran('deskripsi', val)}
-                            placeholder="Cth: Berikut materi pelajaran tentang konsep sisi pada bangun datar..."
-                            minHeight="90px"
-                          />
-                        </div>
-
-                        {/* 2. Poin-poin Pokok Materi */}
-                        <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-3 hover:bg-white hover:border-blue-300 transition-all">
-                          <div className="flex items-center justify-between">
-                            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                              Poin-Poin Rincian Materi Utama
-                            </label>
-                            <button 
-                              type="button" 
-                              onClick={addPoinMateri}
-                              className="text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg border border-blue-200 transition-colors flex items-center gap-1.5"
-                            >
-                              <i className="fas fa-plus text-[10px]"></i> Tambah Poin
-                            </button>
-                          </div>
-
-                          <div className="space-y-3">
-                            {(modulData.materiPelajaran?.poinMateri || ['']).map((poin, pIdx) => (
-                              <div key={pIdx} className="flex items-start space-x-2">
-                                <span className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0 mt-1">
-                                  {pIdx + 1}
-                                </span>
-                                <div className="flex-1">
-                                  <RichTextEditor 
-                                    value={poin}
-                                    onChange={(val) => handlePoinMateriChange(pIdx, val)}
-                                    placeholder={`Masukkan rincian poin materi ke-${pIdx + 1}...`}
-                                    minHeight="70px"
-                                  />
-                                </div>
-                                {(modulData.materiPelajaran?.poinMateri || []).length > 1 && (
-                                  <button 
-                                    type="button"
-                                    onClick={() => removePoinMateri(pIdx)}
-                                    className="w-8 h-8 bg-red-50 hover:bg-red-500 text-red-500 hover:text-white rounded-xl flex items-center justify-center transition-colors shrink-0 mt-1"
-                                    title="Hapus Poin Ini"
-                                  >
-                                    <i className="fas fa-trash-can text-xs"></i>
-                                  </button>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
+                        <RichTextEditor 
+                          value={modulData.materiPelajaran || ''}
+                          onChange={(val) => setModulData(prev => ({ ...prev, materiPelajaran: val }))}
+                          placeholder="Tuliskan materi pelajaran secara lengkap di sini..."
+                          minHeight="320px"
+                        />
                       </div>
                     )}
 
