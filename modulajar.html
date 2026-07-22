@@ -40,10 +40,30 @@
       pointer-events: none !important;
     }
 
-    /* Formatting CSS untuk Editor Teks */
-    .editor-content ol { list-style-position: inside; margin-left: 0.5rem; }
-    .editor-content ul { list-style-type: disc; list-style-position: inside; margin-left: 0.5rem; }
-    .editor-content p { margin-bottom: 0.25rem; }
+    /* Formatting CSS Rapi untuk Editor Teks & Hanging Indent */
+    .editor-content ol { 
+      list-style-type: decimal; 
+      list-style-position: outside; 
+      padding-left: 1.25rem; 
+      margin-left: 0.5rem; 
+      margin-top: 0.25rem;
+      margin-bottom: 0.25rem;
+    }
+    .editor-content ul { 
+      list-style-type: disc; 
+      list-style-position: outside; 
+      padding-left: 1.25rem; 
+      margin-left: 0.5rem; 
+      margin-top: 0.25rem;
+      margin-bottom: 0.25rem;
+    }
+    .editor-content li { 
+      padding-left: 0.25rem; 
+      margin-bottom: 0.25rem;
+    }
+    .editor-content p { 
+      margin-bottom: 0.25rem; 
+    }
   </style>
 
   <script type="module">
@@ -105,7 +125,7 @@
       { id: 'refleksi-diri', title: 'Refleksi Diri', icon: 'fa-user-pen' }
     ];
 
-    // KOMPONEN EDITOR TEKS (DENGAN INDENTASI & FORMAT)
+    // KOMPONEN EDITOR TEKS (WYSIWYG TOOLBAR STANDAR DENGAN HANGING INDENT RAPI)
     const RichTextEditor = ({ value, onChange, placeholder = 'Tuliskan teks di sini...', minHeight = '110px' }) => {
       const editorRef = useRef(null);
 
@@ -122,46 +142,24 @@
         }
       };
 
-      const handleListOption = (type) => {
-        if (!type) return;
-        if (type === 'bullet') {
-          executeCmd('insertUnorderedList');
-        } else {
-          executeCmd('insertOrderedList');
-          const selection = window.getSelection();
-          if (selection.rangeCount > 0) {
-            let node = selection.getRangeAt(0).startContainer;
-            while (node && node !== editorRef.current && node.tagName !== 'OL') {
-              node = node.parentNode;
-            }
-            if (node && node.tagName === 'OL') {
-              node.style.listStyleType = type;
-            }
-          }
-        }
-        if (editorRef.current) {
-          onChange(editorRef.current.innerHTML);
-        }
-      };
-
       return (
         <div className="border border-slate-200 rounded-xl overflow-hidden bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all shadow-sm">
           {/* TOOLBAR EDITOR */}
           <div className="bg-slate-100/90 border-b border-slate-200 p-1.5 flex flex-wrap items-center gap-1 text-slate-700 select-none">
             {/* Gaya Teks */}
-            <button type="button" onClick={() => executeCmd('bold')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center font-bold text-xs" title="Bold">
+            <button type="button" onClick={() => executeCmd('bold')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center font-bold text-xs" title="Tebal (Bold)">
               <i className="fas fa-bold"></i>
             </button>
-            <button type="button" onClick={() => executeCmd('italic')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center text-xs" title="Italic">
+            <button type="button" onClick={() => executeCmd('italic')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center text-xs" title="Miring (Italic)">
               <i className="fas fa-italic"></i>
             </button>
-            <button type="button" onClick={() => executeCmd('underline')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center text-xs" title="Underline">
+            <button type="button" onClick={() => executeCmd('underline')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center text-xs" title="Garis Bawah (Underline)">
               <i className="fas fa-underline"></i>
             </button>
 
             <div className="h-4 w-px bg-slate-300 mx-1"></div>
 
-            {/* Pengaturan Ratataan */}
+            {/* Ratataan Teks */}
             <button type="button" onClick={() => executeCmd('justifyLeft')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center text-xs" title="Rata Kiri">
               <i className="fas fa-align-left"></i>
             </button>
@@ -177,7 +175,7 @@
 
             <div className="h-4 w-px bg-slate-300 mx-1"></div>
 
-            {/* Fitur Indentasi */}
+            {/* Indentasi */}
             <button type="button" onClick={() => executeCmd('outdent')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center text-xs" title="Kurangi Indentasi">
               <i className="fas fa-outdent"></i>
             </button>
@@ -187,21 +185,13 @@
 
             <div className="h-4 w-px bg-slate-300 mx-1"></div>
 
-            {/* Format Penomoran / List Dropdown Simbol Saja */}
-            <select 
-              onChange={(e) => { handleListOption(e.target.value); e.target.value = ""; }}
-              className="bg-white border border-slate-200 rounded px-1.5 py-1 text-xs font-bold text-slate-700 outline-none hover:border-slate-300 cursor-pointer shadow-2xs"
-              defaultValue=""
-              title="Format Penomoran & List"
-            >
-              <option value="" disabled>🔢</option>
-              <option value="decimal">1, 2, 3</option>
-              <option value="upper-roman">I, II, III</option>
-              <option value="lower-roman">i, ii, iii</option>
-              <option value="upper-alpha">A, B, C</option>
-              <option value="lower-alpha">a, b, c</option>
-              <option value="bullet">• Bullet</option>
-            </select>
+            {/* Penomoran & Bullets Bawaan */}
+            <button type="button" onClick={() => executeCmd('insertOrderedList')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center text-xs" title="Penomoran (Numbered List)">
+              <i className="fas fa-list-ol"></i>
+            </button>
+            <button type="button" onClick={() => executeCmd('insertUnorderedList')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center text-xs" title="Simbol (Bulleted List)">
+              <i className="fas fa-list-ul"></i>
+            </button>
           </div>
 
           {/* AREA INPUT EDITABLE */}
