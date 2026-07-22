@@ -85,7 +85,7 @@
   <div id="root" class="min-h-screen w-full"></div>
   
   <script type="text/babel" data-presets="react,env">
-    const { useState, useEffect, useMemo } = React;
+    const { useState, useEffect, useMemo, useRef } = React;
 
     const TAB_LIST = [
       { id: 'info-umum', title: 'Informasi Umum', icon: 'fa-circle-info' },
@@ -124,13 +124,14 @@
 
       const [activeTab, setActiveTab] = useState(0);
 
-      // State untuk Form Tab Informasi Umum
+      // State khusus Form Informasi Umum
       const [infoUmumData, setInfoUmumData] = useState({
         judul: 'RENCANA PEMBELAJARAN MENDALAM (RPM)',
-        fase: 'Fase A',
-        alokasiWaktu: '2 JP x 35 Menit'
+        fase: '',
+        alokasiWaktu: ''
       });
       const [isSavingInfoUmum, setIsSavingInfoUmum] = useState(false);
+      const saveTimerRef = useRef(null);
 
       const activeAcademicPeriod = useMemo(() => {
         return academicYearsDb.find(ay => ay.isActive) || null;
@@ -189,32 +190,6 @@
         return materisDb.filter(m => m.babId === selectedBab.id).sort((a,b) => (a.createdAt || 0) - (b.createdAt || 0));
       }, [materisDb, selectedBab]);
 
-      // Load data simpanan Informasi Umum ketika materi dipilih
-      useEffect(() => {
-        if (selectedMateri) {
-          const fetchModulDetails = async () => {
-            try {
-              const docRef = window.fs.doc(window.db, "modul_details", selectedMateri.id.toString());
-              const docSnap = await window.fs.getDocs(window.fs.collection(window.db, "modul_details"));
-              const matched = docSnap.docs.find(d => d.id === selectedMateri.id.toString());
-              
-              if (matched && matched.data() && matched.data().infoUmum) {
-                setInfoUmumData(matched.data().infoUmum);
-              } else {
-                setInfoUmumData({
-                  judul: 'RENCANA PEMBELAJARAN MENDALAM (RPM)',
-                  fase: 'Fase A',
-                  alokasiWaktu: '2 JP x 35 Menit'
-                });
-              }
-            } catch(e) {
-              console.error("Gagal mengambil data modul detail:", e);
-            }
-          };
-          fetchModulDetails();
-        }
-      }, [selectedMateri]);
-
       useEffect(() => {
         const loadSystemData = async () => {
           try {
@@ -258,6 +233,66 @@
         };
         checkFirebase();
       }, []);
+
+      // Load Data Informasi Umum ketika Materi dipilih
+      useEffect(() => {
+        if (!selectedMateri) return;
+
+        const loadMateriDetails = async () => {
+          try {
+            const docRef = window.fs.doc(window.db, "modul_details", selectedMateri.id.toString());
+            const docSnap = await window.fs.getDocs(window.fs.collection(window.db, "modul_details"));
+            let found = null;
+            docSnap.forEach(d => {
+              if (d.id === selectedMateri.id.toString()) {
+                found = d.data();
+              }
+            });
+
+            if (found && found.infoUmum) {
+              setInfoUmumData({
+                judul: found.infoUmum.judul || 'RENCANA PEMBELAJARAN MENDALAM (RPM)',
+                fase: found.infoUmum.fase || '',
+                alokasiWaktu: found.infoUmum.alokasiWaktu || ''
+              });
+            } else {
+              setInfoUmumData({
+                judul: 'RENCANA PEMBELAJARAN MENDALAM (RPM)',
+                fase: '',
+                alokasiWaktu: ''
+              });
+            }
+          } catch(e) {
+            console.error("Gagal memuat detail modul:", e);
+          }
+        };
+
+        loadMateriDetails();
+      }, [selectedMateri]);
+
+      // Auto-save Informasi Umum dengan Debounce 800ms
+      const handleInfoUmumChange = (field, value) => {
+        const updated = { ...infoUmumData, [field]: value };
+        setInfoUmumData(updated);
+        setIsSavingInfoUmum(true);
+
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+
+        saveTimerRef.current = setTimeout(async () => {
+          if (!selectedMateri) return;
+          try {
+            const docId = selectedMateri.id.toString();
+            await window.fs.setDoc(window.fs.doc(window.db, "modul_details", docId), {
+              materiId: selectedMateri.id,
+              infoUmum: updated
+            }, { merge: true });
+            setIsSavingInfoUmum(false);
+          } catch(e) {
+            console.error("Auto-save gagal:", e);
+            setIsSavingInfoUmum(false);
+          }
+        }, 800);
+      };
 
       // POPUP TAMBAH / EDIT BAB
       const handleAddOrEditBab = (existingBab = null) => {
@@ -419,38 +454,6 @@
             }
           }
         });
-      };
-
-      // FUNGSI SIMPAN TAB INFORMASI UMUM
-      const handleSaveInfoUmum = async (e) => {
-        e.preventDefault();
-        if (!selectedMateri) return;
-
-        setIsSavingInfoUmum(true);
-        try {
-          const docId = selectedMateri.id.toString();
-          const docRef = window.fs.doc(window.db, "modul_details", docId);
-          
-          await window.fs.setDoc(docRef, {
-            materiId: selectedMateri.id,
-            updatedAt: Date.now(),
-            infoUmum: infoUmumData
-          }, { merge: true });
-
-          setIsSavingInfoUmum(false);
-          Swal.fire({ 
-            icon: 'success', 
-            title: 'Tersimpan!', 
-            text: 'Informasi Umum Modul Ajar berhasil disimpan.', 
-            timer: 1500, 
-            showConfirmButton: false, 
-            customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } 
-          });
-        } catch (error) {
-          console.error(error);
-          setIsSavingInfoUmum(false);
-          Swal.fire('Gagal', 'Gagal menyimpan Informasi Umum.', 'error');
-        }
       };
 
       if (!user) {
@@ -883,150 +886,165 @@
                         <i className={`fas ${TAB_LIST[activeTab].icon} text-blue-600 bg-blue-50 p-2 rounded-xl text-base`}></i>
                         <span>{activeTab + 1}. {TAB_LIST[activeTab].title}</span>
                       </h3>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-full border border-slate-200">
-                        Bagian {activeTab + 1} dari 10
-                      </span>
+                      <div className="flex items-center gap-3">
+                        {activeTab === 0 && (
+                          <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5">
+                            {isSavingInfoUmum ? (
+                              <><i className="fas fa-spinner fa-spin text-blue-600"></i> Menyimpan...</>
+                            ) : (
+                              <><i className="fas fa-cloud-arrow-up text-emerald-500"></i> Tersimpan otomatis</>
+                            )}
+                          </span>
+                        )}
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-full border border-slate-200">
+                          Bagian {activeTab + 1} dari 10
+                        </span>
+                      </div>
                     </div>
 
                     {/* TAB 1: INFORMASI UMUM */}
                     {activeTab === 0 && (
-                      <form onSubmit={handleSaveInfoUmum} className="space-y-5 animate-fadeIn">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          
-                          {/* Judul Modul Ajar */}
-                          <div className="md:col-span-2 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                              Judul Modul Ajar / Rencana Pembelajaran
-                            </label>
-                            <input 
-                              type="text" 
-                              value={infoUmumData.judul} 
-                              onChange={e => setInfoUmumData({...infoUmumData, judul: e.target.value})}
-                              className="w-full bg-white border border-slate-200 px-3.5 py-2.5 rounded-lg font-bold text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm"
-                              placeholder="RENCANA PEMBELAJARAN MENDALAM (RPM)"
-                              required
-                            />
-                          </div>
+                      <div className="space-y-4 max-w-3xl mx-auto py-2">
+                        
+                        {/* 1. Judul */}
+                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-1">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                            1. Judul Perencanaan
+                          </label>
+                          <input 
+                            type="text"
+                            value={infoUmumData.judul}
+                            onChange={(e) => handleInfoUmumChange('judul', e.target.value)}
+                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-800 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all shadow-sm"
+                            placeholder="Cth: RENCANA PEMBELAJARAN MENDALAM (RPM)"
+                          />
+                        </div>
 
-                          {/* Nama Penyusun (Otomatis) */}
-                          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                              Nama Penyusun
-                            </label>
-                            <input 
-                              type="text" 
-                              value={user.name} 
-                              readOnly 
-                              className="w-full bg-slate-100/80 border border-slate-200 px-3.5 py-2.5 rounded-lg font-semibold text-slate-600 outline-none text-sm cursor-not-allowed"
-                            />
-                          </div>
+                        {/* 2. Nama Penyusun */}
+                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-1 opacity-90">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                            2. Nama Penyusun <span className="text-[9px] text-blue-600 font-semibold lowercase">(otomatis)</span>
+                          </label>
+                          <input 
+                            type="text"
+                            disabled
+                            value={user ? user.name : ''}
+                            className="w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-600 text-sm cursor-not-allowed"
+                          />
+                        </div>
 
-                          {/* Satuan Pendidikan (Otomatis) */}
-                          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                              Satuan Pendidikan
-                            </label>
-                            <input 
-                              type="text" 
-                              value={settingsDb.namaInstansi || 'Perangkat Guru'} 
-                              readOnly 
-                              className="w-full bg-slate-100/80 border border-slate-200 px-3.5 py-2.5 rounded-lg font-semibold text-slate-600 outline-none text-sm cursor-not-allowed"
-                            />
-                          </div>
+                        {/* 3. Satuan Pendidikan */}
+                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-1 opacity-90">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                            3. Satuan Pendidikan <span className="text-[9px] text-blue-600 font-semibold lowercase">(otomatis)</span>
+                          </label>
+                          <input 
+                            type="text"
+                            disabled
+                            value={settingsDb.namaInstansi || 'Perangkat Guru'}
+                            className="w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-600 text-sm cursor-not-allowed"
+                          />
+                        </div>
 
-                          {/* Tahun Ajaran (Otomatis) */}
-                          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                              Tahun Ajaran
-                            </label>
-                            <input 
-                              type="text" 
-                              value={activeAcademicPeriod ? `${activeAcademicPeriod.year} (${activeAcademicPeriod.semester})` : '-'} 
-                              readOnly 
-                              className="w-full bg-slate-100/80 border border-slate-200 px-3.5 py-2.5 rounded-lg font-semibold text-slate-600 outline-none text-sm cursor-not-allowed"
-                            />
-                          </div>
+                        {/* 4. Tahun Ajaran */}
+                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-1 opacity-90">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                            4. Tahun Ajaran <span className="text-[9px] text-blue-600 font-semibold lowercase">(otomatis)</span>
+                          </label>
+                          <input 
+                            type="text"
+                            disabled
+                            value={activeAcademicPeriod ? `${activeAcademicPeriod.year} (${activeAcademicPeriod.semester})` : '-'}
+                            className="w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-600 text-sm cursor-not-allowed"
+                          />
+                        </div>
 
-                          {/* Mata Pelajaran (Otomatis) */}
-                          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                              Mata Pelajaran
-                            </label>
-                            <input 
-                              type="text" 
-                              value={selectedSubject.name} 
-                              readOnly 
-                              className="w-full bg-slate-100/80 border border-slate-200 px-3.5 py-2.5 rounded-lg font-semibold text-slate-600 outline-none text-sm cursor-not-allowed"
-                            />
-                          </div>
+                        {/* 5. Mata Pelajaran */}
+                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-1 opacity-90">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                            5. Mata Pelajaran <span className="text-[9px] text-blue-600 font-semibold lowercase">(otomatis)</span>
+                          </label>
+                          <input 
+                            type="text"
+                            disabled
+                            value={selectedSubject ? `${selectedSubject.name} [${selectedSubject.code}]` : '-'}
+                            className="w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-600 text-sm cursor-not-allowed"
+                          />
+                        </div>
 
-                          {/* Jenjang / Kelas / Fase */}
-                          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                              Jenjang / Kelas / Fase
-                            </label>
-                            <div className="grid grid-cols-2 gap-2">
+                        {/* 6. Jenjang / Kelas / Fase */}
+                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                            6. Jenjang / Kelas / Fase
+                          </label>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <span className="block text-[10px] font-semibold text-slate-400 mb-1">Kelas / Rombel (Otomatis)</span>
                               <input 
-                                type="text" 
-                                value={`${selectedRombel.level} - ${selectedRombel.name}`} 
-                                readOnly 
-                                className="bg-slate-100/80 border border-slate-200 px-3 py-2 rounded-lg font-semibold text-slate-600 outline-none text-xs cursor-not-allowed"
+                                type="text"
+                                disabled
+                                value={selectedRombel ? `${selectedRombel.name} (${selectedRombel.level})` : '-'}
+                                className="w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-600 text-sm cursor-not-allowed"
                               />
+                            </div>
+                            <div>
+                              <span className="block text-[10px] font-semibold text-slate-600 mb-1">Fase Pembelajaran</span>
                               <input 
-                                type="text" 
-                                value={infoUmumData.fase} 
-                                onChange={e => setInfoUmumData({...infoUmumData, fase: e.target.value})}
-                                className="bg-white border border-slate-200 px-3 py-2 rounded-lg font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none transition-all text-xs"
-                                placeholder="Cth: Fase A"
-                                required
+                                type="text"
+                                value={infoUmumData.fase}
+                                onChange={(e) => handleInfoUmumChange('fase', e.target.value)}
+                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-800 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all shadow-sm"
+                                placeholder="Cth: Fase A / Fase B / Fase C"
                               />
                             </div>
                           </div>
-
-                          {/* Bab / Topik (Materi) Otomatis */}
-                          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                              Bab / Topik (Materi Utama)
-                            </label>
-                            <input 
-                              type="text" 
-                              value={`${selectedBab.title} - ${selectedMateri.title}`} 
-                              readOnly 
-                              className="w-full bg-slate-100/80 border border-slate-200 px-3.5 py-2.5 rounded-lg font-semibold text-slate-600 outline-none text-sm cursor-not-allowed"
-                            />
-                          </div>
-
-                          {/* Alokasi Waktu (Manual) */}
-                          <div className="md:col-span-2 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                              Alokasi Waktu
-                            </label>
-                            <input 
-                              type="text" 
-                              value={infoUmumData.alokasiWaktu} 
-                              onChange={e => setInfoUmumData({...infoUmumData, alokasiWaktu: e.target.value})}
-                              className="w-full bg-white border border-slate-200 px-3.5 py-2.5 rounded-lg font-bold text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm"
-                              placeholder="Cth: 2 JP x 35 Menit (1 Pertemuan)"
-                              required
-                            />
-                          </div>
-
                         </div>
 
-                        <div className="flex justify-end pt-2">
-                          <button
-                            type="submit"
-                            disabled={isSavingInfoUmum}
-                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-xl text-xs transition-all shadow-md shadow-blue-200 flex items-center gap-2 disabled:opacity-50"
-                          >
-                            {isSavingInfoUmum ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-floppy-disk"></i>}
-                            <span>Simpan Informasi Umum</span>
-                          </button>
+                        {/* 7. Bab / Topik (Materi) */}
+                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-3 opacity-90">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                            7. Bab / Topik (Materi) <span className="text-[9px] text-blue-600 font-semibold lowercase">(otomatis)</span>
+                          </label>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <span className="block text-[10px] font-semibold text-slate-400 mb-1">BAB / Unit</span>
+                              <input 
+                                type="text"
+                                disabled
+                                value={selectedBab ? selectedBab.title : '-'}
+                                className="w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-600 text-sm cursor-not-allowed"
+                              />
+                            </div>
+                            <div>
+                              <span className="block text-[10px] font-semibold text-slate-400 mb-1">Topik / Materi Utama</span>
+                              <input 
+                                type="text"
+                                disabled
+                                value={selectedMateri ? selectedMateri.title : '-'}
+                                className="w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-600 text-sm cursor-not-allowed"
+                              />
+                            </div>
+                          </div>
                         </div>
-                      </form>
+
+                        {/* 8. Alokasi Waktu */}
+                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-1">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                            8. Alokasi Waktu
+                          </label>
+                          <input 
+                            type="text"
+                            value={infoUmumData.alokasiWaktu}
+                            onChange={(e) => handleInfoUmumChange('alokasiWaktu', e.target.value)}
+                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-800 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all shadow-sm"
+                            placeholder="Cth: 2 x 35 Menit (1 Pertemuan)"
+                          />
+                        </div>
+
+                      </div>
                     )}
 
-                    {/* DYNAMIC TAB BODY FOR TABS 2 - 10 (PLACEHOLDER FOR NOW) */}
+                    {/* DYNAMIC TAB BODY (PLACEHOLDER UNTUK TAB 2-10) */}
                     {activeTab > 0 && (
                       <div className="p-8 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50 my-6">
                         <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto text-2xl mb-4">
@@ -1038,6 +1056,7 @@
                         </p>
                       </div>
                     )}
+
                   </div>
 
                   {/* BOTTOM NAVIGATION BUTTONS */}
