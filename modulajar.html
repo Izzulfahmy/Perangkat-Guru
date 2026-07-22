@@ -42,9 +42,8 @@
 
     /* Formatting CSS Rapi untuk Editor Teks & Hanging Indent */
     .editor-content ol { 
-      list-style-type: decimal; 
       list-style-position: outside; 
-      padding-left: 1.25rem; 
+      padding-left: 1.5rem; 
       margin-left: 0.5rem; 
       margin-top: 0.25rem;
       margin-bottom: 0.25rem;
@@ -52,7 +51,7 @@
     .editor-content ul { 
       list-style-type: disc; 
       list-style-position: outside; 
-      padding-left: 1.25rem; 
+      padding-left: 1.5rem; 
       margin-left: 0.5rem; 
       margin-top: 0.25rem;
       margin-bottom: 0.25rem;
@@ -125,7 +124,7 @@
       { id: 'refleksi-diri', title: 'Refleksi Diri', icon: 'fa-user-pen' }
     ];
 
-    // KOMPONEN EDITOR TEKS (WYSIWYG TOOLBAR STANDAR DENGAN HANGING INDENT RAPI)
+    // KOMPONEN EDITOR TEKS (LENGKAP DENGAN PILIHAN NUMBERING VARIATIF & INDENTASI)
     const RichTextEditor = ({ value, onChange, placeholder = 'Tuliskan teks di sini...', minHeight = '110px' }) => {
       const editorRef = useRef(null);
 
@@ -137,6 +136,28 @@
 
       const executeCmd = (command, val = null) => {
         document.execCommand(command, false, val);
+        if (editorRef.current) {
+          onChange(editorRef.current.innerHTML);
+        }
+      };
+
+      const handleListOption = (type) => {
+        if (!type) return;
+        if (type === 'bullet') {
+          executeCmd('insertUnorderedList');
+        } else {
+          executeCmd('insertOrderedList');
+          const selection = window.getSelection();
+          if (selection.rangeCount > 0) {
+            let node = selection.getRangeAt(0).startContainer;
+            while (node && node !== editorRef.current && node.tagName !== 'OL') {
+              node = node.parentNode;
+            }
+            if (node && node.tagName === 'OL') {
+              node.style.listStyleType = type;
+            }
+          }
+        }
         if (editorRef.current) {
           onChange(editorRef.current.innerHTML);
         }
@@ -185,13 +206,23 @@
 
             <div className="h-4 w-px bg-slate-300 mx-1"></div>
 
-            {/* Penomoran & Bullets Bawaan */}
-            <button type="button" onClick={() => executeCmd('insertOrderedList')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center text-xs" title="Penomoran (Numbered List)">
-              <i className="fas fa-list-ol"></i>
-            </button>
-            <button type="button" onClick={() => executeCmd('insertUnorderedList')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center text-xs" title="Simbol (Bulleted List)">
-              <i className="fas fa-list-ul"></i>
-            </button>
+            {/* Dropdown Format Penomoran Variatif */}
+            <div className="relative inline-block">
+              <select 
+                onChange={(e) => { handleListOption(e.target.value); e.target.value = ""; }}
+                className="bg-white border border-slate-200 rounded px-1.5 py-1 text-xs font-bold text-slate-700 outline-none hover:border-slate-300 cursor-pointer shadow-2xs"
+                defaultValue=""
+                title="Pilih Format Penomoran / List"
+              >
+                <option value="" disabled>🔢 Penomoran</option>
+                <option value="decimal">1, 2, 3 (Angka Biasa)</option>
+                <option value="upper-roman">I, II, III (Romawi Kapital)</option>
+                <option value="lower-roman">i, ii, iii (Romawi Kecil)</option>
+                <option value="upper-alpha">A, B, C (Huruf Kapital)</option>
+                <option value="lower-alpha">a, b, c (Huruf Kecil)</option>
+                <option value="bullet">• Bullets (Simbol)</option>
+              </select>
+            </div>
           </div>
 
           {/* AREA INPUT EDITABLE */}
