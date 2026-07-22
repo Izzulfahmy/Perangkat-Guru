@@ -116,6 +116,7 @@
       
       const [babsDb, setBabsDb] = useState([]);
       const [materisDb, setMaterisDb] = useState([]);
+      const [modulDataDb, setModulDataDb] = useState([]);
 
       const [selectedRombel, setSelectedRombel] = useState(null);
       const [selectedSubject, setSelectedSubject] = useState(null);
@@ -123,6 +124,13 @@
       const [selectedMateri, setSelectedMateri] = useState(null);
 
       const [activeTab, setActiveTab] = useState(0);
+
+      // State khusus Form Informasi Umum
+      const [infoUmumData, setInfoUmumData] = useState({
+        fase: 'Fase A',
+        alokasiWaktu: '2 JP x 35 Menit'
+      });
+      const [isSavingInfo, setIsSavingInfo] = useState(false);
 
       const activeAcademicPeriod = useMemo(() => {
         return academicYearsDb.find(ay => ay.isActive) || null;
@@ -186,13 +194,14 @@
           try {
             await window.fs.signInAnonymously(window.auth);
             
-            const [rombSnap, subjSnap, academicSnap, setSnap, babsSnap, materisSnap] = await Promise.all([
+            const [rombSnap, subjSnap, academicSnap, setSnap, babsSnap, materisSnap, modulSnap] = await Promise.all([
               window.fs.getDocs(window.fs.collection(window.db, "rombels")),
               window.fs.getDocs(window.fs.collection(window.db, "subjects")),
               window.fs.getDocs(window.fs.collection(window.db, "academic_years")),
               window.fs.getDocs(window.fs.collection(window.db, "settings")),
               window.fs.getDocs(window.fs.collection(window.db, "modul_babs")),
-              window.fs.getDocs(window.fs.collection(window.db, "modul_materis"))
+              window.fs.getDocs(window.fs.collection(window.db, "modul_materis")),
+              window.fs.getDocs(window.fs.collection(window.db, "modul_data"))
             ]);
 
             setRombelsDb(rombSnap.docs.map(d => d.data()));
@@ -200,6 +209,7 @@
             setAcademicYearsDb(academicSnap.docs.map(d => d.data()));
             setBabsDb(babsSnap.docs.map(d => d.data()));
             setMaterisDb(materisSnap.docs.map(d => d.data()));
+            setModulDataDb(modulSnap.docs.map(d => d.data()));
 
             let s = {};
             setSnap.forEach(d => { if(d.id === 'config') s = d.data(); });
@@ -224,6 +234,79 @@
         };
         checkFirebase();
       }, []);
+
+      // Sinkronisasi data Informasi Umum ketika materi dipilih
+      useEffect(() => {
+        if (selectedMateri) {
+          const existingModul = modulDataDb.find(m => m.materiId === selectedMateri.id);
+          if (existingModul && existingModul.infoUmum) {
+            setInfoUmumData({
+              fase: existingModul.infoUmum.fase || 'Fase A',
+              alokasiWaktu: existingModul.infoUmum.alokasiWaktu || '2 JP x 35 Menit'
+            });
+          } else {
+            setInfoUmumData({
+              fase: 'Fase A',
+              alokasiWaktu: '2 JP x 35 Menit'
+            });
+          }
+        }
+      }, [selectedMateri, modulDataDb]);
+
+      // SIMPAN INFORMASI UMUM KE FIRESTORE
+      const handleSaveInfoUmum = async (e) => {
+        e.preventDefault();
+        if (!selectedMateri) return;
+
+        setIsSavingInfo(true);
+        try {
+          const modulDocId = selectedMateri.id.toString();
+          const existingModul = modulDataDb.find(m => m.materiId === selectedMateri.id) || {};
+
+          const updatedModul = {
+            ...existingModul,
+            id: selectedMateri.id,
+            materiId: selectedMateri.id,
+            babId: selectedBab.id,
+            rombelId: selectedRombel.id,
+            subjectId: selectedSubject.id,
+            academicYearId: activeAcademicPeriod.id,
+            updatedAt: Date.now(),
+            infoUmum: {
+              namaPenyusun: user ? user.name : '',
+              satuanPendidikan: settingsDb.namaInstansi || '',
+              tahunAjaran: activeAcademicPeriod ? `${activeAcademicPeriod.year} (${activeAcademicPeriod.semester})` : '',
+              mataPelajaran: selectedSubject ? selectedSubject.name : '',
+              jenjangKelas: selectedRombel ? selectedRombel.name : '',
+              fase: infoUmumData.fase,
+              bab: selectedBab ? selectedBab.title : '',
+              topikMateri: selectedMateri ? selectedMateri.title : '',
+              alokasiWaktu: infoUmumData.alokasiWaktu
+            }
+          };
+
+          await window.fs.setDoc(window.fs.doc(window.db, "modul_data", modulDocId), updatedModul);
+          setModulDataDb(prev => {
+            const exists = prev.some(m => m.id === selectedMateri.id);
+            if (exists) return prev.map(m => m.id === selectedMateri.id ? updatedModul : m);
+            return [...prev, updatedModul];
+          });
+
+          setIsSavingInfo(false);
+          Swal.fire({
+            icon: 'success',
+            title: 'Tersimpan!',
+            text: 'Informasi Umum Modul Ajar berhasil disimpan.',
+            timer: 1500,
+            showConfirmButton: false,
+            customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' }
+          });
+        } catch (err) {
+          console.error(err);
+          setIsSavingInfo(false);
+          Swal.fire('Error', 'Gagal menyimpan Informasi Umum.', 'error');
+        }
+      };
 
       // POPUP TAMBAH / EDIT BAB
       const handleAddOrEditBab = (existingBab = null) => {
@@ -293,7 +376,6 @@
             try {
               await window.fs.deleteDoc(window.fs.doc(window.db, "modul_babs", babId.toString()));
               
-              // Hapus materi terkait
               const relatedMateris = materisDb.filter(m => m.babId === babId);
               for (const m of relatedMateris) {
                 await window.fs.deleteDoc(window.fs.doc(window.db, "modul_materis", m.id.toString()));
@@ -376,7 +458,9 @@
           if (res.isConfirmed) {
             try {
               await window.fs.deleteDoc(window.fs.doc(window.db, "modul_materis", materiId.toString()));
+              await window.fs.deleteDoc(window.fs.doc(window.db, "modul_data", materiId.toString()));
               setMaterisDb(prev => prev.filter(m => m.id !== materiId));
+              setModulDataDb(prev => prev.filter(m => m.id !== materiId));
               if (selectedMateri && selectedMateri.id === materiId) setSelectedMateri(null);
               Swal.fire({ icon: 'success', title: 'Terhapus', text: 'Materi berhasil dihapus.', timer: 1500, showConfirmButton: false, customClass: { popup: 'swal2-minimalist-popup w-[90%] max-w-sm' } });
             } catch (err) {
@@ -811,7 +895,7 @@
 
                 {/* TAB CONTENT CONTAINER */}
                 <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm min-h-[420px] flex flex-col justify-between">
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
                       <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2.5">
                         <i className={`fas ${TAB_LIST[activeTab].icon} text-blue-600 bg-blue-50 p-2 rounded-xl text-base`}></i>
@@ -822,20 +906,169 @@
                       </span>
                     </div>
 
-                    {/* DYNAMIC TAB BODY (PLACEHOLDER FOR NOW) */}
-                    <div className="p-8 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50 my-6">
-                      <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto text-2xl mb-4">
-                        <i className={`fas ${TAB_LIST[activeTab].icon}`}></i>
+                    {/* TAB 1: INFORMASI UMUM FORM */}
+                    {activeTab === 0 && (
+                      <form onSubmit={handleSaveInfoUmum} className="space-y-5 animate-fadeIn">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          
+                          {/* Nama Penyusun (Otomatis User) */}
+                          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                              Nama Penyusun
+                            </label>
+                            <input 
+                              type="text" 
+                              value={user ? user.name : ''} 
+                              readOnly 
+                              className="w-full bg-transparent outline-none font-bold text-slate-700 text-sm cursor-not-allowed"
+                            />
+                            <p className="text-[9px] text-slate-400 mt-0.5">*Terisi otomatis dari akun login</p>
+                          </div>
+
+                          {/* Satuan Pendidikan (Otomatis Nama Instansi) */}
+                          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                              Satuan Pendidikan
+                            </label>
+                            <input 
+                              type="text" 
+                              value={settingsDb.namaInstansi || 'Instansi Sekolah'} 
+                              readOnly 
+                              className="w-full bg-transparent outline-none font-bold text-slate-700 text-sm cursor-not-allowed"
+                            />
+                            <p className="text-[9px] text-slate-400 mt-0.5">*Terisi otomatis dari Pengaturan Profil Sekolah</p>
+                          </div>
+
+                          {/* Tahun Ajaran (Otomatis Tapel) */}
+                          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                              Tahun Ajaran / Semester
+                            </label>
+                            <input 
+                              type="text" 
+                              value={activeAcademicPeriod ? `${activeAcademicPeriod.year} (${activeAcademicPeriod.semester})` : '-'} 
+                              readOnly 
+                              className="w-full bg-transparent outline-none font-bold text-slate-700 text-sm cursor-not-allowed"
+                            />
+                            <p className="text-[9px] text-slate-400 mt-0.5">*Terisi otomatis dari Tahun Pelajaran Aktif</p>
+                          </div>
+
+                          {/* Mata Pelajaran (Otomatis) */}
+                          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                              Mata Pelajaran
+                            </label>
+                            <input 
+                              type="text" 
+                              value={selectedSubject ? selectedSubject.name : ''} 
+                              readOnly 
+                              className="w-full bg-transparent outline-none font-bold text-slate-700 text-sm cursor-not-allowed"
+                            />
+                            <p className="text-[9px] text-slate-400 mt-0.5">*Terisi otomatis dari Mapel terpilih</p>
+                          </div>
+
+                          {/* Jenjang / Kelas / Fase */}
+                          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                              Jenjang & Kelas (Otomatis)
+                            </label>
+                            <input 
+                              type="text" 
+                              value={selectedRombel ? `${selectedRombel.name} (${selectedRombel.level})` : ''} 
+                              readOnly 
+                              className="w-full bg-transparent outline-none font-bold text-slate-700 text-sm cursor-not-allowed"
+                            />
+                          </div>
+
+                          {/* Pilihan Fase (Manual) */}
+                          <div className="bg-white p-3.5 rounded-xl border border-blue-200 shadow-sm">
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-blue-600 mb-1">
+                              Fase Kurikulum (Manual)
+                            </label>
+                            <select 
+                              value={infoUmumData.fase} 
+                              onChange={(e) => setInfoUmumData({...infoUmumData, fase: e.target.value})}
+                              className="w-full bg-transparent outline-none font-bold text-slate-800 text-sm cursor-pointer"
+                            >
+                              <option value="Fase A">Fase A (Kelas 1 - 2 SD)</option>
+                              <option value="Fase B">Fase B (Kelas 3 - 4 SD)</option>
+                              <option value="Fase C">Fase C (Kelas 5 - 6 SD)</option>
+                              <option value="Fase D">Fase D (Kelas 7 - 9 SMP)</option>
+                              <option value="Fase E">Fase E (Kelas 10 SMA/SMK)</option>
+                              <option value="Fase F">Fase F (Kelas 11 - 12 SMA/SMK)</option>
+                            </select>
+                          </div>
+
+                          {/* BAB / Topik (Materi Otomatis) */}
+                          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 md:col-span-2">
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                              BAB / Topik (Materi Utama)
+                            </label>
+                            <input 
+                              type="text" 
+                              value={`${selectedBab ? selectedBab.title : ''} — ${selectedMateri ? selectedMateri.title : ''}`} 
+                              readOnly 
+                              className="w-full bg-transparent outline-none font-bold text-slate-700 text-sm cursor-not-allowed"
+                            />
+                            <p className="text-[9px] text-slate-400 mt-0.5">*Terisi otomatis dari BAB & Materi terpilih</p>
+                          </div>
+
+                          {/* Alokasi Waktu (Manual) */}
+                          <div className="bg-white p-3.5 rounded-xl border border-blue-200 shadow-sm md:col-span-2">
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-blue-600 mb-1">
+                              Alokasi Waktu (Manual)
+                            </label>
+                            <input 
+                              type="text" 
+                              value={infoUmumData.alokasiWaktu} 
+                              onChange={(e) => setInfoUmumData({...infoUmumData, alokasiWaktu: e.target.value})}
+                              placeholder="Cth: 2 JP x 35 Menit (1 Pertemuan)"
+                              className="w-full bg-transparent outline-none font-bold text-slate-800 text-sm"
+                              required
+                            />
+                            <p className="text-[9px] text-slate-400 mt-0.5">*Ketikkan jumlah Jam Pelajaran (JP) dan perkiraan durasi</p>
+                          </div>
+
+                        </div>
+
+                        <div className="flex justify-end pt-2">
+                          <button
+                            type="submit"
+                            disabled={isSavingInfo}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-xl text-xs transition-all shadow-md shadow-emerald-100 flex items-center gap-2 disabled:opacity-50"
+                          >
+                            {isSavingInfo ? (
+                              <>
+                                <i className="fas fa-spinner fa-spin"></i>
+                                <span>Menyimpan...</span>
+                              </>
+                            ) : (
+                              <>
+                                <i className="fas fa-floppy-disk"></i>
+                                <span>Simpan Informasi Umum</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </form>
+                    )}
+
+                    {/* DYNAMIC TAB BODY FOR OTHER TABS (2 - 10) */}
+                    {activeTab > 0 && (
+                      <div className="p-8 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50 my-6">
+                        <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto text-2xl mb-4">
+                          <i className={`fas ${TAB_LIST[activeTab].icon}`}></i>
+                        </div>
+                        <h4 className="text-base font-bold text-slate-700">Form {TAB_LIST[activeTab].title}</h4>
+                        <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto font-medium">
+                          Area input data untuk materi <b>{selectedMateri.title}</b> pada bagian <b>{TAB_LIST[activeTab].title}</b> akan dikembangkan pada tahap selanjutnya.
+                        </p>
                       </div>
-                      <h4 className="text-base font-bold text-slate-700">Form {TAB_LIST[activeTab].title}</h4>
-                      <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto font-medium">
-                        Area input data untuk materi <b>{selectedMateri.title}</b> pada bagian <b>{TAB_LIST[activeTab].title}</b> akan dikembangkan pada tahap selanjutnya.
-                      </p>
-                    </div>
+                    )}
                   </div>
 
                   {/* BOTTOM NAVIGATION BUTTONS */}
-                  <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
+                  <div className="pt-6 border-t border-slate-100 flex items-center justify-between mt-6">
                     <button
                       onClick={() => setActiveTab(prev => Math.max(0, prev - 1))}
                       disabled={activeTab === 0}
