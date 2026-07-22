@@ -105,7 +105,7 @@
       { id: 'refleksi-diri', title: 'Refleksi Diri', icon: 'fa-user-pen' }
     ];
 
-    // KOMPONEN EDITOR TEKS (WYSIWYG TOOLBAR RINGKAS)
+    // KOMPONEN EDITOR TEKS (DENGAN INDENTASI & FORMAT)
     const RichTextEditor = ({ value, onChange, placeholder = 'Tuliskan teks di sini...', minHeight = '110px' }) => {
       const editorRef = useRef(null);
 
@@ -173,6 +173,16 @@
             </button>
             <button type="button" onClick={() => executeCmd('justifyFull')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center text-xs" title="Rata Kiri-Kanan">
               <i className="fas fa-align-justify"></i>
+            </button>
+
+            <div className="h-4 w-px bg-slate-300 mx-1"></div>
+
+            {/* Fitur Indentasi */}
+            <button type="button" onClick={() => executeCmd('outdent')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center text-xs" title="Kurangi Indentasi">
+              <i className="fas fa-outdent"></i>
+            </button>
+            <button type="button" onClick={() => executeCmd('indent')} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center text-xs" title="Tambah Indentasi">
+              <i className="fas fa-indent"></i>
             </button>
 
             <div className="h-4 w-px bg-slate-300 mx-1"></div>
