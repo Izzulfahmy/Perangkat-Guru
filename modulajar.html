@@ -40,29 +40,28 @@
       pointer-events: none !important;
     }
 
-    /* Formatting CSS Rapi untuk Editor Teks & Hanging Indent */
-    .editor-content ol { 
-      list-style-position: outside; 
-      padding-left: 1.5rem; 
-      margin-left: 0.5rem; 
+    /* CSS Rapi untuk List & Hanging Indent */
+    .editor-content ol, .editor-content ul {
+      list-style-position: outside;
+      padding-left: 1.5rem;
       margin-top: 0.25rem;
       margin-bottom: 0.25rem;
     }
-    .editor-content ul { 
-      list-style-type: disc; 
-      list-style-position: outside; 
-      padding-left: 1.5rem; 
-      margin-left: 0.5rem; 
-      margin-top: 0.25rem;
+    .editor-content li {
+      padding-left: 0.25rem;
       margin-bottom: 0.25rem;
     }
-    .editor-content li { 
-      padding-left: 0.25rem; 
+    .editor-content p {
       margin-bottom: 0.25rem;
     }
-    .editor-content p { 
-      margin-bottom: 0.25rem; 
-    }
+
+    /* Penanganan CSS List-Style Type */
+    .editor-content ol.list-decimal { list-style-type: decimal; }
+    .editor-content ol.list-upper-roman { list-style-type: upper-roman; }
+    .editor-content ol.list-lower-roman { list-style-type: lower-roman; }
+    .editor-content ol.list-upper-alpha { list-style-type: upper-alpha; }
+    .editor-content ol.list-lower-alpha { list-style-type: lower-alpha; }
+    .editor-content ul.list-disc { list-style-type: disc; }
   </style>
 
   <script type="module">
@@ -124,7 +123,7 @@
       { id: 'refleksi-diri', title: 'Refleksi Diri', icon: 'fa-user-pen' }
     ];
 
-    // KOMPONEN EDITOR TEKS (LENGKAP DENGAN PILIHAN NUMBERING VARIATIF & INDENTASI)
+    // KOMPONEN EDITOR TEKS (DENGAN TOMBOL AKSI LENGKAP)
     const RichTextEditor = ({ value, onChange, placeholder = 'Tuliskan teks di sini...', minHeight = '110px' }) => {
       const editorRef = useRef(null);
 
@@ -141,21 +140,19 @@
         }
       };
 
-      const handleListOption = (type) => {
-        if (!type) return;
-        if (type === 'bullet') {
-          executeCmd('insertUnorderedList');
-        } else {
-          executeCmd('insertOrderedList');
-          const selection = window.getSelection();
-          if (selection.rangeCount > 0) {
-            let node = selection.getRangeAt(0).startContainer;
-            while (node && node !== editorRef.current && node.tagName !== 'OL') {
-              node = node.parentNode;
-            }
-            if (node && node.tagName === 'OL') {
-              node.style.listStyleType = type;
-            }
+      const handleListStyle = (styleClass, isUnordered = false) => {
+        executeCmd(isUnordered ? 'insertUnorderedList' : 'insertOrderedList');
+        
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0) {
+          let node = selection.getRangeAt(0).startContainer;
+          const targetTag = isUnordered ? 'UL' : 'OL';
+          while (node && node !== editorRef.current && node.tagName !== targetTag) {
+            node = node.parentNode;
+          }
+          if (node && node.tagName === targetTag) {
+            node.className = ''; 
+            node.classList.add(styleClass);
           }
         }
         if (editorRef.current) {
@@ -206,23 +203,25 @@
 
             <div className="h-4 w-px bg-slate-300 mx-1"></div>
 
-            {/* Dropdown Format Penomoran Variatif */}
-            <div className="relative inline-block">
-              <select 
-                onChange={(e) => { handleListOption(e.target.value); e.target.value = ""; }}
-                className="bg-white border border-slate-200 rounded px-1.5 py-1 text-xs font-bold text-slate-700 outline-none hover:border-slate-300 cursor-pointer shadow-2xs"
-                defaultValue=""
-                title="Pilih Format Penomoran / List"
-              >
-                <option value="" disabled>🔢 Penomoran</option>
-                <option value="decimal">1, 2, 3 (Angka Biasa)</option>
-                <option value="upper-roman">I, II, III (Romawi Kapital)</option>
-                <option value="lower-roman">i, ii, iii (Romawi Kecil)</option>
-                <option value="upper-alpha">A, B, C (Huruf Kapital)</option>
-                <option value="lower-alpha">a, b, c (Huruf Kecil)</option>
-                <option value="bullet">• Bullets (Simbol)</option>
-              </select>
-            </div>
+            {/* Tombol-Tombol Penomoran Langsung */}
+            <button type="button" onClick={() => handleListStyle('list-decimal')} className="px-1.5 h-7 rounded hover:bg-slate-200 font-bold text-[11px] flex items-center justify-center border border-slate-200 bg-white" title="Angka Biasa (1. 2. 3.)">
+              1.
+            </button>
+            <button type="button" onClick={() => handleListStyle('list-upper-roman')} className="px-1.5 h-7 rounded hover:bg-slate-200 font-bold text-[11px] flex items-center justify-center border border-slate-200 bg-white" title="Romawi Kapital (I. II. III.)">
+              I.
+            </button>
+            <button type="button" onClick={() => handleListStyle('list-lower-roman')} className="px-1.5 h-7 rounded hover:bg-slate-200 font-bold text-[11px] flex items-center justify-center border border-slate-200 bg-white" title="Romawi Kecil (i. ii. iii.)">
+              i.
+            </button>
+            <button type="button" onClick={() => handleListStyle('list-upper-alpha')} className="px-1.5 h-7 rounded hover:bg-slate-200 font-bold text-[11px] flex items-center justify-center border border-slate-200 bg-white" title="Huruf Kapital (A. B. C.)">
+              A.
+            </button>
+            <button type="button" onClick={() => handleListStyle('list-lower-alpha')} className="px-1.5 h-7 rounded hover:bg-slate-200 font-bold text-[11px] flex items-center justify-center border border-slate-200 bg-white" title="Huruf Kecil (a. b. c.)">
+              a.
+            </button>
+            <button type="button" onClick={() => handleListStyle('list-disc', true)} className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center text-xs border border-slate-200 bg-white" title="Bullet / Simbol Titik">
+              <i className="fas fa-list-ul"></i>
+            </button>
           </div>
 
           {/* AREA INPUT EDITABLE */}
