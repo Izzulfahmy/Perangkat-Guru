@@ -268,7 +268,7 @@
 
       const [activeTab, setActiveTab] = useState(0);
 
-      // State Utama untuk seluruh data Modul Ajar
+      // State Utama untuk seluruh 10 Tab Modul Ajar
       const [modulData, setModulData] = useState({
         infoUmum: {
           judul: 'RENCANA PEMBELAJARAN MENDALAM (RPM)',
@@ -304,6 +304,23 @@
           budayaBelajar: '',
           ruangFisik: '',
           kemitraanPembelajaran: ''
+        },
+        pengalamanBelajar: {
+          kegiatanAwal: '',
+          kegiatanInti: '',
+          kegiatanPenutup: ''
+        },
+        asesmen: {
+          jenisTeknik: '',
+          rubrikPenilaian: ''
+        },
+        pengayaanRemedial: {
+          pengayaan: '',
+          remedial: ''
+        },
+        refleksiDiri: {
+          refleksiMurid: '',
+          refleksiPendidik: ''
         }
       });
 
@@ -466,6 +483,27 @@
               kemitraanPembelajaran: existingModul?.kerangkaPembelajaran?.kemitraanPembelajaran || ''
             };
 
+            const loadedPengalamanBelajar = {
+              kegiatanAwal: existingModul?.pengalamanBelajar?.kegiatanAwal || '',
+              kegiatanInti: existingModul?.pengalamanBelajar?.kegiatanInti || '',
+              kegiatanPenutup: existingModul?.pengalamanBelajar?.kegiatanPenutup || ''
+            };
+
+            const loadedAsesmen = {
+              jenisTeknik: existingModul?.asesmen?.jenisTeknik || '',
+              rubrikPenilaian: existingModul?.asesmen?.rubrikPenilaian || ''
+            };
+
+            const loadedPengayaanRemedial = {
+              pengayaan: existingModul?.pengayaanRemedial?.pengayaan || '',
+              remedial: existingModul?.pengayaanRemedial?.remedial || ''
+            };
+
+            const loadedRefleksiDiri = {
+              refleksiMurid: existingModul?.refleksiDiri?.refleksiMurid || '',
+              refleksiPendidik: existingModul?.refleksiDiri?.refleksiPendidik || ''
+            };
+
             setModulData({
               ...existingModul,
               infoUmum: loadedInfoUmum,
@@ -473,7 +511,11 @@
               materiPelajaran: loadedMateriPelajaran,
               profilPancasila: loadedProfilPancasila,
               desainPembelajaran: loadedDesainPembelajaran,
-              kerangkaPembelajaran: loadedKerangkaPembelajaran
+              kerangkaPembelajaran: loadedKerangkaPembelajaran,
+              pengalamanBelajar: loadedPengalamanBelajar,
+              asesmen: loadedAsesmen,
+              pengayaanRemedial: loadedPengayaanRemedial,
+              refleksiDiri: loadedRefleksiDiri
             });
 
             setSaveStatus('Tersimpan');
@@ -515,7 +557,7 @@
         return () => clearTimeout(timer);
       }, [modulData]);
 
-      // HELPER UPDATER PER SECTION
+      // HELPER UPDATERS PER SECTION
       const updateInfoUmum = (field, value) => {
         setModulData(prev => ({
           ...prev,
@@ -530,7 +572,6 @@
         }));
       };
 
-      // HELPER TAB 4 (PROFIL PANCASILA - DIMENSI TEKS BIASA)
       const updateProfilPancasilaRow = (index, field, value) => {
         const list = [...(modulData.profilPancasila || [])];
         list[index][field] = value;
@@ -547,25 +588,45 @@
         setModulData(prev => ({ ...prev, profilPancasila: list }));
       };
 
-      // HELPER TAB 5 (DESAIN PEMBELAJARAN - FIXED COMPONENTS)
       const updateDesainPembelajaran = (field, value) => {
         setModulData(prev => ({
           ...prev,
-          desainPembelajaran: {
-            ...prev.desainPembelajaran,
-            [field]: value
-          }
+          desainPembelajaran: { ...prev.desainPembelajaran, [field]: value }
         }));
       };
 
-      // HELPER TAB 6 (KERANGKA PEMBELAJARAN - FIXED PRACTICE LIST)
       const updateKerangkaPembelajaran = (field, value) => {
         setModulData(prev => ({
           ...prev,
-          kerangkaPembelajaran: {
-            ...prev.kerangkaPembelajaran,
-            [field]: value
-          }
+          kerangkaPembelajaran: { ...prev.kerangkaPembelajaran, [field]: value }
+        }));
+      };
+
+      const updatePengalamanBelajar = (field, value) => {
+        setModulData(prev => ({
+          ...prev,
+          pengalamanBelajar: { ...prev.pengalamanBelajar, [field]: value }
+        }));
+      };
+
+      const updateAsesmen = (field, value) => {
+        setModulData(prev => ({
+          ...prev,
+          asesmen: { ...prev.asesmen, [field]: value }
+        }));
+      };
+
+      const updatePengayaanRemedial = (field, value) => {
+        setModulData(prev => ({
+          ...prev,
+          pengayaanRemedial: { ...prev.pengayaanRemedial, [field]: value }
+        }));
+      };
+
+      const updateRefleksiDiri = (field, value) => {
+        setModulData(prev => ({
+          ...prev,
+          refleksiDiri: { ...prev.refleksiDiri, [field]: value }
         }));
       };
 
@@ -1371,7 +1432,7 @@
                       </div>
                     )}
 
-                    {/* TAB 4: DIMENSI PROFIL PELAJAR PANCASILA (DIMENSI TEKS BIASA) */}
+                    {/* TAB 4: DIMENSI PROFIL PELAJAR PANCASILA */}
                     {activeTab === 3 && (
                       <div className="space-y-4 max-w-4xl mx-auto py-2 animate-fadeIn">
                         <div className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-200">
@@ -1408,7 +1469,6 @@
                               </div>
 
                               <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-                                {/* Kolom 1: Dimensi (Teks Biasa Tanpa Tools) */}
                                 <div className="md:col-span-4 space-y-1">
                                   <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">
                                     Dimensi
@@ -1422,7 +1482,6 @@
                                   />
                                 </div>
 
-                                {/* Kolom 2: Elemen yang Dikembangkan (Rich Text) */}
                                 <div className="md:col-span-8 space-y-1">
                                   <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">
                                     Elemen yang Dikembangkan
@@ -1441,11 +1500,10 @@
                       </div>
                     )}
 
-                    {/* TAB 5: DESAIN PEMBELAJARAN (KOMPONEN FIXED / POIN TETAP) */}
+                    {/* TAB 5: DESAIN PEMBELAJARAN */}
                     {activeTab === 4 && (
                       <div className="space-y-4 max-w-4xl mx-auto py-2 animate-fadeIn">
                         
-                        {/* 1. Capaian Pembelajaran */}
                         <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-1.5 hover:bg-white hover:border-blue-300 transition-all">
                           <label className="block text-[11px] font-bold uppercase tracking-wider text-blue-700">
                             Capaian Pembelajaran
@@ -1458,7 +1516,6 @@
                           />
                         </div>
 
-                        {/* 2. Lintas Disiplin Ilmu */}
                         <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-1.5 hover:bg-white hover:border-blue-300 transition-all">
                           <label className="block text-[11px] font-bold uppercase tracking-wider text-blue-700">
                             Lintas Disiplin Ilmu
@@ -1471,7 +1528,6 @@
                           />
                         </div>
 
-                        {/* 3. Tujuan Pembelajaran */}
                         <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-1.5 hover:bg-white hover:border-blue-300 transition-all">
                           <label className="block text-[11px] font-bold uppercase tracking-wider text-blue-700">
                             Tujuan Pembelajaran
@@ -1484,7 +1540,6 @@
                           />
                         </div>
 
-                        {/* 4. Pengetahuan Bermakna */}
                         <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-1.5 hover:bg-white hover:border-blue-300 transition-all">
                           <label className="block text-[11px] font-bold uppercase tracking-wider text-blue-700">
                             Pengetahuan Bermakna
@@ -1500,11 +1555,10 @@
                       </div>
                     )}
 
-                    {/* TAB 6: KERANGKA PEMBELAJARAN (PRAKTEK PEDAGOGIS FIXED LIST) */}
+                    {/* TAB 6: KERANGKA PEMBELAJARAN */}
                     {activeTab === 5 && (
                       <div className="space-y-4 max-w-4xl mx-auto py-2 animate-fadeIn">
                         
-                        {/* 1. Model & Metode */}
                         <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-1.5 hover:bg-white hover:border-blue-300 transition-all">
                           <label className="block text-[11px] font-bold uppercase tracking-wider text-indigo-700">
                             Model & Metode Pembelajaran
@@ -1512,12 +1566,11 @@
                           <RichTextEditor 
                             value={modulData.kerangkaPembelajaran?.modelMetode || ''}
                             onChange={(val) => updateKerangkaPembelajaran('modelMetode', val)}
-                            placeholder="Misal: Model PBL (Problem Based Learning), Metode Demonstrasi, Praktik Langsung, Tanya Jawab..."
+                            placeholder="Misal: Model PBL (Problem Based Learning), Metode Demonstrasi, Praktik Langsung..."
                             minHeight="90px"
                           />
                         </div>
 
-                        {/* 2. Prinsip Pembelajaran Mendalam */}
                         <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-1.5 hover:bg-white hover:border-blue-300 transition-all">
                           <label className="block text-[11px] font-bold uppercase tracking-wider text-indigo-700">
                             Prinsip Pembelajaran Mendalam
@@ -1530,7 +1583,6 @@
                           />
                         </div>
 
-                        {/* 3. Budaya Belajar */}
                         <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-1.5 hover:bg-white hover:border-blue-300 transition-all">
                           <label className="block text-[11px] font-bold uppercase tracking-wider text-indigo-700">
                             Budaya Belajar
@@ -1538,12 +1590,11 @@
                           <RichTextEditor 
                             value={modulData.kerangkaPembelajaran?.budayaBelajar || ''}
                             onChange={(val) => updateKerangkaPembelajaran('budayaBelajar', val)}
-                            placeholder="Deskripsikan dorongan ketelitian, kolaborasi, eksplorasi aktif, dan rasa ingin tahu murid..."
+                            placeholder="Deskripsikan dorongan ketelitian, kolaborasi, eksplorasi aktif, dan rasa ingin tahu..."
                             minHeight="90px"
                           />
                         </div>
 
-                        {/* 4. Ruang Fisik */}
                         <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-1.5 hover:bg-white hover:border-blue-300 transition-all">
                           <label className="block text-[11px] font-bold uppercase tracking-wider text-indigo-700">
                             Ruang Fisik
@@ -1551,12 +1602,11 @@
                           <RichTextEditor 
                             value={modulData.kerangkaPembelajaran?.ruangFisik || ''}
                             onChange={(val) => updateKerangkaPembelajaran('ruangFisik', val)}
-                            placeholder="Jelaskan pengaturan ruang kelas atau lingkungan belajar untuk mendukung aktivitas..."
+                            placeholder="Jelaskan pengaturan ruang kelas atau lingkungan belajar..."
                             minHeight="90px"
                           />
                         </div>
 
-                        {/* 5. Kemitraan Pembelajaran */}
                         <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-1.5 hover:bg-white hover:border-blue-300 transition-all">
                           <label className="block text-[11px] font-bold uppercase tracking-wider text-indigo-700">
                             Kemitraan Pembelajaran
@@ -1564,7 +1614,7 @@
                           <RichTextEditor 
                             value={modulData.kerangkaPembelajaran?.kemitraanPembelajaran || ''}
                             onChange={(val) => updateKerangkaPembelajaran('kemitraanPembelajaran', val)}
-                            placeholder="Sebutkan interaksi antar murid (kelompok) dan interaksi timbal balik antara guru dan murid..."
+                            placeholder="Sebutkan interaksi antar murid dan interaksi timbal balik guru dan murid..."
                             minHeight="90px"
                           />
                         </div>
@@ -1572,16 +1622,139 @@
                       </div>
                     )}
 
-                    {/* DYNAMIC TAB BODY UNTUK TAB 7 SAMPAI 10 (PLACEHOLDER DULU) */}
-                    {activeTab > 5 && (
-                      <div className="p-8 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50 my-6">
-                        <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto text-2xl mb-4">
-                          <i className={`fas ${TAB_LIST[activeTab].icon}`}></i>
+                    {/* TAB 7: PENGALAMAN BELAJAR */}
+                    {activeTab === 6 && (
+                      <div className="space-y-4 max-w-4xl mx-auto py-2 animate-fadeIn">
+                        
+                        <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-1.5 hover:bg-white hover:border-blue-300 transition-all">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-emerald-700">
+                            Kegiatan Awal (Pendahuluan)
+                          </label>
+                          <RichTextEditor 
+                            value={modulData.pengalamanBelajar?.kegiatanAwal || ''}
+                            onChange={(val) => updatePengalamanBelajar('kegiatanAwal', val)}
+                            placeholder="Tuliskan urutan kegiatan pendahuluan (salam, doa, presensi, apersepsi, ice breaking, motivasi)..."
+                            minHeight="120px"
+                          />
                         </div>
-                        <h4 className="text-base font-bold text-slate-700">Form {TAB_LIST[activeTab].title}</h4>
-                        <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto font-medium">
-                          Area input data untuk materi <b>{selectedMateri.title}</b> pada bagian <b>{TAB_LIST[activeTab].title}</b> akan dikembangkan pada tahap selanjutnya.
-                        </p>
+
+                        <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-1.5 hover:bg-white hover:border-blue-300 transition-all">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-emerald-700">
+                            Kegiatan Inti (Sintak Pembelajaran)
+                          </label>
+                          <RichTextEditor 
+                            value={modulData.pengalamanBelajar?.kegiatanInti || ''}
+                            onChange={(val) => updatePengalamanBelajar('kegiatanInti', val)}
+                            placeholder="Tuliskan langkah-langkah rinci sintak model pembelajaran (Orientasi masalah, diskusi kelompok, bimbingan, presentasi)..."
+                            minHeight="200px"
+                          />
+                        </div>
+
+                        <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-1.5 hover:bg-white hover:border-blue-300 transition-all">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-emerald-700">
+                            Kegiatan Penutup
+                          </label>
+                          <RichTextEditor 
+                            value={modulData.pengalamanBelajar?.kegiatanPenutup || ''}
+                            onChange={(val) => updatePengalamanBelajar('kegiatanPenutup', val)}
+                            placeholder="Tuliskan urutan kegiatan penutup (kesimpulan, evaluasi, refleksi, penyampaian rencana berikutnya, doa, salam)..."
+                            minHeight="120px"
+                          />
+                        </div>
+
+                      </div>
+                    )}
+
+                    {/* TAB 8: ASESMEN */}
+                    {activeTab === 7 && (
+                      <div className="space-y-4 max-w-4xl mx-auto py-2 animate-fadeIn">
+                        
+                        <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-1.5 hover:bg-white hover:border-blue-300 transition-all">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-amber-700">
+                            Jenis & Teknik Asesmen
+                          </label>
+                          <RichTextEditor 
+                            value={modulData.asesmen?.jenisTeknik || ''}
+                            onChange={(val) => updateAsesmen('jenisTeknik', val)}
+                            placeholder="Uraikan jenis asesmen (Asesmen Kognitif, Psikomotor, Afektif/Sikap) dan teknik pengukurannya..."
+                            minHeight="120px"
+                          />
+                        </div>
+
+                        <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-1.5 hover:bg-white hover:border-blue-300 transition-all">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-amber-700">
+                            Rubrik & Instrumen Penilaian
+                          </label>
+                          <RichTextEditor 
+                            value={modulData.asesmen?.rubrikPenilaian || ''}
+                            onChange={(val) => updateAsesmen('rubrikPenilaian', val)}
+                            placeholder="Tuliskan kriteria skor/rubrik penilaian (Skor 4, Skor 3, Skor 2, Skor 1) secara rinci..."
+                            minHeight="200px"
+                          />
+                        </div>
+
+                      </div>
+                    )}
+
+                    {/* TAB 9: PENGAYAAN DAN REMEDIAL */}
+                    {activeTab === 8 && (
+                      <div className="space-y-4 max-w-4xl mx-auto py-2 animate-fadeIn">
+                        
+                        <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-1.5 hover:bg-white hover:border-blue-300 transition-all">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-teal-700">
+                            Program Pengayaan
+                          </label>
+                          <RichTextEditor 
+                            value={modulData.pengayaanRemedial?.pengayaan || ''}
+                            onChange={(val) => updatePengayaanRemedial('pengayaan', val)}
+                            placeholder="Tuliskan bentuk tantangan atau materi tingkat lanjut untuk siswa yang mencapai KKM..."
+                            minHeight="140px"
+                          />
+                        </div>
+
+                        <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-1.5 hover:bg-white hover:border-blue-300 transition-all">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-teal-700">
+                            Program Remedial
+                          </label>
+                          <RichTextEditor 
+                            value={modulData.pengayaanRemedial?.remedial || ''}
+                            onChange={(val) => updatePengayaanRemedial('remedial', val)}
+                            placeholder="Tuliskan bentuk bimbingan individu atau penanganan khusus untuk siswa yang belum mencapai KKM..."
+                            minHeight="140px"
+                          />
+                        </div>
+
+                      </div>
+                    )}
+
+                    {/* TAB 10: REFLEKSI DIRI */}
+                    {activeTab === 9 && (
+                      <div className="space-y-4 max-w-4xl mx-auto py-2 animate-fadeIn">
+                        
+                        <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-1.5 hover:bg-white hover:border-blue-300 transition-all">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-purple-700">
+                            Refleksi Murid
+                          </label>
+                          <RichTextEditor 
+                            value={modulData.refleksiDiri?.refleksiMurid || ''}
+                            onChange={(val) => updateRefleksiDiri('refleksiMurid', val)}
+                            placeholder="Daftar pertanyaan refleksi untuk murid (misal: Apakah aku sudah paham...? Kegiatan mana yang paling menyenangkan...?)..."
+                            minHeight="140px"
+                          />
+                        </div>
+
+                        <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-1.5 hover:bg-white hover:border-blue-300 transition-all">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-purple-700">
+                            Refleksi Pendidik / Guru
+                          </label>
+                          <RichTextEditor 
+                            value={modulData.refleksiDiri?.refleksiPendidik || ''}
+                            onChange={(val) => updateRefleksiDiri('refleksiPendidik', val)}
+                            placeholder="Daftar pertanyaan refleksi untuk guru (misal: Apakah demonstrasi efektif...? Apakah masih ada siswa yang keliru...?)..."
+                            minHeight="140px"
+                          />
+                        </div>
+
                       </div>
                     )}
 
