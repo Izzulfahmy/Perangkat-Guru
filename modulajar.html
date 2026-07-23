@@ -286,7 +286,18 @@
           minat: '',
           kebutuhanBelajar: ''
         },
-        materiPelajaran: ''
+        materiPelajaran: '',
+        profilPancasila: [
+          { dimensi: 'Penalaran Kritis', elemen: '' },
+          { dimensi: 'Kemandirian', elemen: '' },
+          { dimensi: 'Bekerja Sama', elemen: '' }
+        ],
+        desainPembelajaran: [
+          { komponen: 'Capaian Pembelajaran', deskripsi: '' },
+          { komponen: 'Lintas Disiplin Ilmu', deskripsi: '' },
+          { komponen: 'Tujuan Pembelajaran', deskripsi: '' },
+          { komponen: 'Pengetahuan Bermakna', deskripsi: '' }
+        ]
       });
 
       const [saveStatus, setSaveStatus] = useState('Tersimpan');
@@ -425,11 +436,30 @@
               ? existingModul.materiPelajaran
               : (existingModul?.materiPelajaran?.deskripsi || '');
 
+            const loadedProfilPancasila = existingModul?.profilPancasila && Array.isArray(existingModul.profilPancasila) && existingModul.profilPancasila.length > 0
+              ? existingModul.profilPancasila
+              : [
+                  { dimensi: 'Penalaran Kritis', elemen: '' },
+                  { dimensi: 'Kemandirian', elemen: '' },
+                  { dimensi: 'Bekerja Sama', elemen: '' }
+                ];
+
+            const loadedDesainPembelajaran = existingModul?.desainPembelajaran && Array.isArray(existingModul.desainPembelajaran) && existingModul.desainPembelajaran.length > 0
+              ? existingModul.desainPembelajaran
+              : [
+                  { komponen: 'Capaian Pembelajaran', deskripsi: '' },
+                  { komponen: 'Lintas Disiplin Ilmu', deskripsi: '' },
+                  { komponen: 'Tujuan Pembelajaran', deskripsi: '' },
+                  { komponen: 'Pengetahuan Bermakna', deskripsi: '' }
+                ];
+
             setModulData({
               ...existingModul,
               infoUmum: loadedInfoUmum,
               identifikasiMurid: loadedIdentifikasi,
-              materiPelajaran: loadedMateriPelajaran
+              materiPelajaran: loadedMateriPelajaran,
+              profilPancasila: loadedProfilPancasila,
+              desainPembelajaran: loadedDesainPembelajaran
             });
 
             setSaveStatus('Tersimpan');
@@ -484,6 +514,40 @@
           ...prev,
           identifikasiMurid: { ...prev.identifikasiMurid, [field]: value }
         }));
+      };
+
+      // HELPER DYNAMIC TABEL TAB 4 (PROFIL PANCASILA)
+      const updateProfilPancasilaRow = (index, field, value) => {
+        const list = [...(modulData.profilPancasila || [])];
+        list[index][field] = value;
+        setModulData(prev => ({ ...prev, profilPancasila: list }));
+      };
+
+      const addProfilPancasilaRow = () => {
+        const list = [...(modulData.profilPancasila || []), { dimensi: '', elemen: '' }];
+        setModulData(prev => ({ ...prev, profilPancasila: list }));
+      };
+
+      const removeProfilPancasilaRow = (index) => {
+        const list = (modulData.profilPancasila || []).filter((_, i) => i !== index);
+        setModulData(prev => ({ ...prev, profilPancasila: list }));
+      };
+
+      // HELPER DYNAMIC TABEL TAB 5 (DESAIN PEMBELAJARAN)
+      const updateDesainPembelajaranRow = (index, field, value) => {
+        const list = [...(modulData.desainPembelajaran || [])];
+        list[index][field] = value;
+        setModulData(prev => ({ ...prev, desainPembelajaran: list }));
+      };
+
+      const addDesainPembelajaranRow = () => {
+        const list = [...(modulData.desainPembelajaran || []), { komponen: '', deskripsi: '' }];
+        setModulData(prev => ({ ...prev, desainPembelajaran: list }));
+      };
+
+      const removeDesainPembelajaranRow = (index) => {
+        const list = (modulData.desainPembelajaran || []).filter((_, i) => i !== index);
+        setModulData(prev => ({ ...prev, desainPembelajaran: list }));
       };
 
       // POPUP TAMBAH / EDIT BAB
@@ -1230,7 +1294,7 @@
                       </div>
                     )}
 
-                    {/* TAB 2: IDENTIFIKASI MURID (DENGAN RICH TEXT EDITOR & TIMES NEW ROMAN) */}
+                    {/* TAB 2: IDENTIFIKASI MURID */}
                     {activeTab === 1 && (
                       <div className="space-y-4 max-w-4xl mx-auto py-2 animate-fadeIn">
                         
@@ -1276,7 +1340,7 @@
                       </div>
                     )}
 
-                    {/* TAB 3: MATERI PELAJARAN (SINGLE TEXTBOX TIMES NEW ROMAN) */}
+                    {/* TAB 3: MATERI PELAJARAN */}
                     {activeTab === 2 && (
                       <div className="space-y-4 max-w-4xl mx-auto py-2 animate-fadeIn">
                         <RichTextEditor 
@@ -1288,8 +1352,146 @@
                       </div>
                     )}
 
-                    {/* DYNAMIC TAB BODY UNTUK TAB 4 SAMPAI 10 (PLACEHOLDER DULU) */}
-                    {activeTab > 2 && (
+                    {/* TAB 4: DIMENSI PROFIL PELAJAR PANCASILA */}
+                    {activeTab === 3 && (
+                      <div className="space-y-4 max-w-4xl mx-auto py-2 animate-fadeIn">
+                        <div className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                          <div>
+                            <h4 className="text-sm font-bold text-slate-800">Tabel Dimensi Profil Pelajar Pancasila</h4>
+                            <p className="text-xs text-slate-400 font-medium">Tambahkan dimensi dan elemen yang dikembangkan dalam modul ajar ini.</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={addProfilPancasilaRow}
+                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-xl text-xs transition-all shadow-md shadow-blue-100 flex items-center gap-1.5 shrink-0"
+                          >
+                            <i className="fas fa-plus"></i> Tambah Baris
+                          </button>
+                        </div>
+
+                        <div className="space-y-3">
+                          {(modulData.profilPancasila || []).map((row, rIdx) => (
+                            <div key={rIdx} className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-3 hover:bg-white hover:border-blue-300 transition-all relative group">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-extrabold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-100">
+                                  Baris #{rIdx + 1}
+                                </span>
+                                {(modulData.profilPancasila || []).length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => removeProfilPancasilaRow(rIdx)}
+                                    className="text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors flex items-center gap-1"
+                                    title="Hapus Baris Ini"
+                                  >
+                                    <i className="fas fa-trash-can"></i> Hapus
+                                  </button>
+                                )}
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                                {/* Kolom 1: Dimensi */}
+                                <div className="md:col-span-4 space-y-1">
+                                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                                    Dimensi
+                                  </label>
+                                  <RichTextEditor 
+                                    value={row.dimensi}
+                                    onChange={(val) => updateProfilPancasilaRow(rIdx, 'dimensi', val)}
+                                    placeholder="Cth: Penalaran Kritis"
+                                    minHeight="80px"
+                                  />
+                                </div>
+
+                                {/* Kolom 2: Elemen yang Dikembangkan */}
+                                <div className="md:col-span-8 space-y-1">
+                                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                                    Elemen yang Dikembangkan
+                                  </label>
+                                  <RichTextEditor 
+                                    value={row.elemen}
+                                    onChange={(val) => updateProfilPancasilaRow(rIdx, 'elemen', val)}
+                                    placeholder="Rincian elemen dan deskripsi perkembangan..."
+                                    minHeight="80px"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* TAB 5: DESAIN PEMBELAJARAN */}
+                    {activeTab === 4 && (
+                      <div className="space-y-4 max-w-4xl mx-auto py-2 animate-fadeIn">
+                        <div className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                          <div>
+                            <h4 className="text-sm font-bold text-slate-800">Tabel Desain Pembelajaran</h4>
+                            <p className="text-xs text-slate-400 font-medium">Isi komponen seperti Capaian, Tujuan Pembelajaran, Lintas Disiplin Ilmu, dsb.</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={addDesainPembelajaranRow}
+                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-xl text-xs transition-all shadow-md shadow-blue-100 flex items-center gap-1.5 shrink-0"
+                          >
+                            <i className="fas fa-plus"></i> Tambah Baris
+                          </button>
+                        </div>
+
+                        <div className="space-y-3">
+                          {(modulData.desainPembelajaran || []).map((row, rIdx) => (
+                            <div key={rIdx} className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-3 hover:bg-white hover:border-blue-300 transition-all relative group">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-extrabold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-md border border-indigo-100">
+                                  Baris #{rIdx + 1}
+                                </span>
+                                {(modulData.desainPembelajaran || []).length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => removeDesainPembelajaranRow(rIdx)}
+                                    className="text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors flex items-center gap-1"
+                                    title="Hapus Baris Ini"
+                                  >
+                                    <i className="fas fa-trash-can"></i> Hapus
+                                  </button>
+                                )}
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                                {/* Kolom 1: Komponen */}
+                                <div className="md:col-span-4 space-y-1">
+                                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                                    Komponen
+                                  </label>
+                                  <RichTextEditor 
+                                    value={row.komponen}
+                                    onChange={(val) => updateDesainPembelajaranRow(rIdx, 'komponen', val)}
+                                    placeholder="Cth: Tujuan Pembelajaran"
+                                    minHeight="80px"
+                                  />
+                                </div>
+
+                                {/* Kolom 2: Deskripsi */}
+                                <div className="md:col-span-8 space-y-1">
+                                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                                    Deskripsi
+                                  </label>
+                                  <RichTextEditor 
+                                    value={row.deskripsi}
+                                    onChange={(val) => updateDesainPembelajaranRow(rIdx, 'deskripsi', val)}
+                                    placeholder="Deskripsi rincian komponen desain pembelajaran..."
+                                    minHeight="80px"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* DYNAMIC TAB BODY UNTUK TAB 6 SAMPAI 10 (PLACEHOLDER DULU) */}
+                    {activeTab > 4 && (
                       <div className="p-8 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50 my-6">
                         <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto text-2xl mb-4">
                           <i className={`fas ${TAB_LIST[activeTab].icon}`}></i>
